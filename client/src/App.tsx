@@ -172,7 +172,9 @@ export default function App() {
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [creatingSurvey, setCreatingSurvey] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '');
+
   useEffect(() => {
     if (adminToken) {
       sessionStorage.setItem('adminToken', adminToken);
@@ -181,27 +183,95 @@ export default function App() {
 
   const isAuthProvided = useMemo(() => auth.initDataRaw !== null || auth.debugUser !== null, [auth]);
 
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId],
+  );
+
+  const ensureAdminToken = useCallback(() => {
+    let token = adminToken.trim();
+    if (!token) {
+      const input = window.prompt('Введите токен администратора', adminToken) ?? '';
+      token = input.trim();
+      if (!token) {
+        return '';
+      }
+      setAdminToken(token);
+    }
+
+    return token;
+  }, [adminToken]);
+
   const handleOpenAdmin = useCallback(() => {
-    const input = window.prompt('Введите токен администратора', adminToken) ?? '';
-    const token = input.trim();
+    const token = ensureAdminToken();
     if (!token) {
       return;
     }
 
-    setAdminToken(token);
-
+    const targetUrl = buildAdminUrl(token);
     const openLink = window.Telegram?.WebApp?.openLink;
     if (openLink) {
-      openLink(buildAdminUrl(token), { try_instant_view: false });
+      openLink(targetUrl, { try_instant_view: false });
       return;
     }
 
-    window.open(buildAdminUrl(token), '_blank', 'noopener');
-  }, [adminToken]);
+    window.location.href = targetUrl;
+  }, [ensureAdminToken]);
 
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId],
+  const refreshProjects = useCallback(
+    async (searchTerm?: string) => {
+      if (!isAuthProvided) {
+        return;
+      }
+
+      setProjectsLoading(true);
+      setProjectsError(null);
+
+      const normalized = searchTerm && searchTerm.trim().length ? searchTerm.trim() : undefined;
+
+      try {
+        const response = await fetchProjects(auth, normalized);
+        setProjects(response.projects);
+        setSelectedProjectId((currentId) => {
+          if (!response.projects.length) {
+            return null;
+          }
+
+          return currentId && response.projects.some((project) => project.id === currentId)
+            ? currentId
+            : response.projects[0].id;
+        });
+      } catch (error) {
+        setProjectsError(formatApiError(error));
+      } finally {
+        setProjectsLoading(false);
+      }
+    },
+    [auth, isAuthProvided],
+  );
+
+  const refreshSurveys = useCallback(
+    async (projectId: number) => {
+      if (!isAuthProvided) {
+        return;
+      }
+
+      setSurveysLoading(true);
+      setBannerError(null);
+
+      try {
+        const response = await fetchSurveys(auth, projectId);
+        setSurveys(response.surveys);
+        setCurrentSurvey((previous) =>
+          previous ? response.surveys.find((survey) => survey.id === previous.id) ?? previous : null,
+        );
+      } catch (error) {
+        setBannerError(formatApiError(error));
+      } finally {
+        setSurveysLoading(false);
+      }
+    },
+    [auth, isAuthProvided],
   );
 
   useEffect(() => {
@@ -209,83 +279,43 @@ export default function App() {
       return;
     }
 
-    let cancelled = false;
-    setProjectsLoading(true);
-    setProjectsError(null);
-
-    const debounce = setTimeout(() => {
-      fetchProjects(auth, projectSearch.trim() ? projectSearch.trim() : undefined)
-        .then((response) => {
-          if (cancelled) {
-            return;
-          }
-
-          setProjects(response.projects);
-          if (response.projects.length === 0) {
-            setSelectedProjectId(null);
-            return;
-          }
-
-          const currentExists = response.projects.some((project) => project.id === selectedProjectId);
-          if (selectedProjectId === null || !currentExists) {
-            setSelectedProjectId(response.projects[0].id);
-          }
-        })
-        .catch((error) => {
-          if (!cancelled) {
-            setProjectsError(formatApiError(error));
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setProjectsLoading(false);
-          }
-        });
+    const timeoutId = window.setTimeout(() => {
+      void refreshProjects(projectSearch);
     }, 300);
 
     return () => {
-      cancelled = true;
-      clearTimeout(debounce);
+      window.clearTimeout(timeoutId);
     };
-  }, [auth, isAuthProvided, projectSearch, ready, selectedProjectId]);
+  }, [ready, isAuthProvided, projectSearch, refreshProjects]);
 
   useEffect(() => {
-    if (!selectedProject || !ready) {
-      setSurveys([]);
-      setCurrentSurvey(null);
-      setActiveStep(0);
+    if (!ready || !isAuthProvided) {
       return;
     }
 
-    let cancelled = false;
-    setSurveysLoading(true);
-    setBannerError(null);
+    if (!selectedProjectId) {
+      setSurveys([]);
+      setCurrentSurvey(null);
+      setActiveStep(0);
+      setEditingSurveyId(null);
+      return;
+    }
 
-    fetchSurveys(auth, selectedProject.id)
-      .then((response) => {
-        if (cancelled) {
-          return;
-        }
+    void refreshSurveys(selectedProjectId);
+  }, [ready, isAuthProvided, selectedProjectId, refreshSurveys]);
 
-        setSurveys(response.surveys);
-        setCurrentSurvey(null);
-        setActiveStep(0);
-      })
-        .catch((error) => {
-          if (!cancelled) {
-            setBannerError(formatApiError(error));
-          }
-        })
-      .finally(() => {
-        if (!cancelled) {
-          setSurveysLoading(false);
-        }
-      });
+  useEffect(() => {
+    if (!isAuthProvided || !selectedProjectId) {
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [auth, ready, selectedProject]);
+    const intervalId = window.setInterval(() => {
+      void refreshProjects(projectSearch);
+      void refreshSurveys(selectedProjectId);
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isAuthProvided, projectSearch, refreshProjects, refreshSurveys, selectedProjectId]);
 
   useEffect(() => {
     if (!currentSurvey) {
@@ -295,14 +325,57 @@ export default function App() {
     setActiveStep(findNextStep(currentSurvey));
   }, [currentSurvey]);
 
-  const handleAddProject = useCallback(async (name: string) => {
-    const response = await createProject(auth, name);
-    setProjects((prev) => [response.project, ...prev.filter((project) => project.id !== response.project.id)]);
-    setSelectedProjectId(response.project.id);
-  }, [auth]);
+  const submitSurveyAnswer = useCallback(
+    async (surveyId: number, key: QuestionKey, value: number | string) => {
+      setSavingAnswer(true);
+      setBannerError(null);
+
+      try {
+        const normalizedValue = typeof value === 'string' ? value.trim() : value;
+        const payload = { [key]: normalizedValue } as SurveyAnswers;
+        const response = await updateSurveyRequest(auth, surveyId, payload);
+
+        setSurveys((prev) => prev.map((survey) => (survey.id === response.survey.id ? response.survey : survey)));
+        setCurrentSurvey((prev) => (prev && prev.id === response.survey.id ? response.survey : prev));
+
+        await refreshProjects(projectSearch);
+        await refreshSurveys(response.survey.projectId);
+      } catch (error) {
+        setBannerError(formatApiError(error));
+        throw error;
+      } finally {
+        setSavingAnswer(false);
+      }
+    },
+    [auth, projectSearch, refreshProjects, refreshSurveys],
+  );
+
+  const handleSurveyAnswer = useCallback(
+    async (key: QuestionKey, value: number | string) => {
+      if (!currentSurvey) {
+        throw new Error('Анкета не найдена');
+      }
+
+      await submitSurveyAnswer(currentSurvey.id, key, value);
+    },
+    [currentSurvey, submitSurveyAnswer],
+  );
+
+  const handleInlineSubmit = useCallback(
+    (surveyId: number, key: QuestionKey, value: number | string) => submitSurveyAnswer(surveyId, key, value),
+    [submitSurveyAnswer],
+  );
+
+  const handleAddProject = useCallback(
+    async (name: string) => {
+      await createProject(auth, name);
+      await refreshProjects(projectSearch);
+    },
+    [auth, projectSearch, refreshProjects],
+  );
 
   const handleCreateSurvey = useCallback(async () => {
-    if (!selectedProject) {
+    if (!selectedProjectId) {
       return;
     }
 
@@ -310,45 +383,34 @@ export default function App() {
     setBannerError(null);
 
     try {
-      const response = await createSurveyRequest(auth, { projectId: selectedProject.id });
+      const response = await createSurveyRequest(auth, { projectId: selectedProjectId });
       setCurrentSurvey(response.record);
-      setSurveys((prev) => {
-        const filtered = prev.filter((survey) => survey.id !== response.record.id);
-        return [response.record, ...filtered];
-      });
+      setEditingSurveyId(null);
       setActiveStep(findNextStep(response.record));
+      await refreshSurveys(selectedProjectId);
+      await refreshProjects(projectSearch);
     } catch (error) {
       setBannerError(formatApiError(error));
     } finally {
       setCreatingSurvey(false);
     }
-  }, [auth, selectedProject]);
-
-  const handleSurveyAnswer = useCallback(async (key: QuestionKey, value: number | string) => {
-    if (!currentSurvey) {
-      throw new Error('Анкета не найдена');
-    }
-
-    setSavingAnswer(true);
-    setBannerError(null);
-    try {
-      const payload = { [key]: value } as SurveyAnswers;
-      const response = await updateSurveyRequest(auth, currentSurvey.id, payload);
-      setCurrentSurvey(response.survey);
-      setSurveys((prev) => prev.map((survey) => (survey.id === response.survey.id ? response.survey : survey)));
-    } finally {
-      setSavingAnswer(false);
-    }
-  }, [auth, currentSurvey]);
+  }, [auth, projectSearch, refreshProjects, refreshSurveys, selectedProjectId]);
 
   const handleEditSurvey = useCallback((survey: SurveyRecord) => {
-    setCurrentSurvey(survey);
-    setActiveStep(findNextStep(survey));
+    setCurrentSurvey(null);
+    setActiveStep(0);
+    setEditingSurveyId(survey.id);
+    setBannerError(null);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingSurveyId(null);
   }, []);
 
   const handleCloseSurvey = useCallback(() => {
     setCurrentSurvey(null);
     setActiveStep(0);
+    setEditingSurveyId(null);
   }, []);
 
   return (
@@ -363,9 +425,14 @@ export default function App() {
             </p>
           </div>
           <div className="header-actions">
-            <button type="button" className="button button--ghost header-actions__admin" onClick={handleOpenAdmin}>
-              Панель проекта
-            </button>
+            <div className="role-toggle">
+              <button type="button" className="role-toggle__button role-toggle__button--active">
+                Пользователь
+              </button>
+              <button type="button" className="role-toggle__button" onClick={handleOpenAdmin}>
+                Администратор
+              </button>
+            </div>
             {user && (
               <div className="user-card">
                 <span className="user-card__hello">Привет, {user.first_name}!</span>
@@ -430,7 +497,16 @@ export default function App() {
               />
             )}
             {selectedProject && (
-              <ResponsesList surveys={surveys} onEdit={handleEditSurvey} isLoading={surveysLoading} />
+              <ResponsesList
+                surveys={surveys}
+                questions={QUESTION_CONFIG}
+                onEdit={handleEditSurvey}
+                isLoading={surveysLoading}
+                editingSurveyId={editingSurveyId}
+                onCancelEdit={handleCancelEdit}
+                onSubmitField={handleInlineSubmit}
+                isSaving={savingAnswer}
+              />
             )}
           </div>
         </main>

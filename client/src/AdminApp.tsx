@@ -417,18 +417,23 @@ export default function AdminApp() {
               реального времени.
             </p>
           </div>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => {
-              debugTokenAttemptedRef.current = false;
-              setToken(null);
-              setTokenInput('');
-              localStorage.removeItem(STORAGE_KEY);
-            }}
-          >
-            Сменить токен
-          </button>
+          <div className="admin-header__actions">
+            <button type="button" className="button button--ghost" onClick={() => window.location.replace('/') }>
+              Режим пользователя
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => {
+                debugTokenAttemptedRef.current = false;
+                setToken(null);
+                setTokenInput('');
+                localStorage.removeItem(STORAGE_KEY);
+              }}
+            >
+              Сменить токен
+            </button>
+          </div>
         </header>
         {projectsError && <div className="banner banner--error">{projectsError}</div>}
         <div className="admin-dashboard">

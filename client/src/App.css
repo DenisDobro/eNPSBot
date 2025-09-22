@@ -40,6 +40,34 @@
   white-space: nowrap;
 }
 
+.role-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px;
+  gap: 4px;
+}
+
+.role-toggle__button {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  background: transparent;
+  color: rgba(245, 246, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-toggle__button:hover {
+  color: #f5f6ff;
+}
+
+.role-toggle__button--active {
+  background: linear-gradient(135deg, rgba(108, 56, 255, 0.8) 0%, rgba(34, 228, 253, 0.9) 100%);
+  color: #05031c;
+}
+
 .app-title {
   margin: 0 0 18px;
   font-size: 42px;
@@ -399,6 +427,54 @@
 
 .responses-list {
   gap: 18px;
+}
+
+.response-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.response-editor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.response-editor__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.response-editor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(12, 8, 31, 0.6);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.response-editor__section-header h4 {
+  margin: 0;
+  color: #f5f6ff;
+}
+
+.response-editor__section-header p {
+  margin: 4px 0 0;
+  color: rgba(245, 246, 255, 0.62);
+  font-size: 13px;
+}
+
+.response-editor__textarea {
+  min-height: 120px;
+}
+
+.response-editor__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .response-card {
