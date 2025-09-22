@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import './App.css';
 import './AdminApp.css';
-import { fetchAdminDebugToken, fetchAdminProjectResponses, fetchAdminProjects } from './api';
+import { fetchAdminDebugToken, fetchAdminProjectResponses, fetchAdminProjects, sanitizeAdminToken } from './api';
 import type { AdminProjectStats, AdminSurveyRecord } from './types';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -37,26 +37,34 @@ function formatWeekRange(start: Date): string {
 
 const STORAGE_KEY = 'enps-admin-token';
 
-function resolveInitialToken(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  const queryToken = params.get('token') ?? params.get('adminToken');
+function resolveInitialToken(storageEnabled: boolean): string | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const queryToken = params.get('token') ?? params.get('adminToken');
 
-  if (queryToken) {
-    const trimmed = queryToken.trim();
-    if (trimmed) {
-      localStorage.setItem(STORAGE_KEY, trimmed);
-      return trimmed;
+    if (queryToken) {
+      const trimmed = queryToken.trim();
+      if (trimmed) {
+        if (storageEnabled) {
+          localStorage.setItem(STORAGE_KEY, trimmed);
+        }
+        return trimmed;
+      }
     }
-  }
 
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && saved.trim()) {
-    return saved.trim();
-  }
+    if (storageEnabled) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved && saved.trim()) {
+        return saved.trim();
+      }
+    }
 
-  const envToken = import.meta.env.VITE_ADMIN_TOKEN;
-  if (envToken && envToken.trim()) {
-    return envToken.trim();
+    const envToken = import.meta.env.VITE_ADMIN_TOKEN;
+    if (envToken && envToken.trim()) {
+      return envToken.trim();
+    }
+  } catch {
+    // ignore storage errors
   }
 
   return null;
@@ -94,8 +102,22 @@ function formatUserName(record: AdminSurveyRecord): string {
   return username ? `@${username}` : `ID ${record.user.id}`;
 }
 
-export default function AdminApp() {
-  const [token, setToken] = useState<string | null>(() => resolveInitialToken());
+interface AdminAppProps {
+  initialToken?: string | null;
+  embedded?: boolean;
+  onTokenChange?: (token: string | null) => void;
+  onBackToUser?: () => void;
+}
+
+export default function AdminApp({ initialToken = null, embedded = false, onTokenChange, onBackToUser }: AdminAppProps) {
+  const storageEnabled = !embedded;
+  const [token, setToken] = useState<string | null>(() => {
+    if (initialToken && initialToken.trim()) {
+      return initialToken.trim();
+    }
+
+    return resolveInitialToken(storageEnabled);
+  });
   const [tokenInput, setTokenInput] = useState(token ?? '');
   const [projects, setProjects] = useState<AdminProjectStats[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -120,6 +142,43 @@ export default function AdminApp() {
     () => projects.reduce((acc, project) => acc + project.uniqueRespondents, 0),
     [projects],
   );
+
+  const handleTokenSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      try {
+        const sanitized = sanitizeAdminToken(tokenInput);
+        setToken(sanitized);
+        setProjectsError(null);
+      } catch (error) {
+        setProjectsError(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [tokenInput],
+  );
+
+  useEffect(() => {
+    onTokenChange?.(token);
+
+    if (!storageEnabled) {
+      return;
+    }
+
+    try {
+      if (token) {
+        localStorage.setItem(STORAGE_KEY, token);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [onTokenChange, storageEnabled, token]);
+
+  useEffect(() => {
+    setTokenInput(token ?? '');
+  }, [token]);
 
   const overallProjectScore = useMemo(() => {
     let weightedSum = 0;
@@ -146,7 +205,6 @@ export default function AdminApp() {
       setProjects([]);
       setSelectedProjectId(null);
       setProjectsError(null);
-      localStorage.removeItem(STORAGE_KEY);
       return;
     }
 
@@ -173,7 +231,6 @@ export default function AdminApp() {
           setSelectedProjectId(null);
         }
 
-        localStorage.setItem(STORAGE_KEY, token);
       })
       .catch((error: Error & { status?: number }) => {
         if (cancelled) {
@@ -185,7 +242,6 @@ export default function AdminApp() {
 
         if (error.status === 401) {
           debugTokenAttemptedRef.current = false;
-          localStorage.removeItem(STORAGE_KEY);
           setToken(null);
           setTokenInput('');
         }
@@ -235,7 +291,7 @@ export default function AdminApp() {
   }, [selectedProjectId, token]);
 
   useEffect(() => {
-    if (token || debugTokenAttemptedRef.current) {
+    if (embedded || token || debugTokenAttemptedRef.current) {
       return;
     }
 
@@ -248,14 +304,12 @@ export default function AdminApp() {
           return;
         }
 
-        const debugToken = data.token.trim();
-        if (!debugToken) {
-          return;
+        try {
+          const sanitized = sanitizeAdminToken(data.token);
+          setToken(sanitized);
+        } catch (error) {
+          setProjectsError(error instanceof Error ? error.message : String(error));
         }
-
-        localStorage.setItem(STORAGE_KEY, debugToken);
-        setToken(debugToken);
-        setTokenInput(debugToken);
       })
       .catch((error: Error & { status?: number }) => {
         if (cancelled || error.status === 404) {
@@ -268,7 +322,7 @@ export default function AdminApp() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [embedded, token]);
 
   const contributionData = useMemo(() => {
     if (!selectedProject) {
@@ -380,13 +434,7 @@ export default function AdminApp() {
                 <p className="panel-subtitle">Введите токен, чтобы посмотреть статистику проектного офиса.</p>
               </div>
             </header>
-            <form
-              className="panel-body admin-token-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setToken(tokenInput.trim() || null);
-              }}
-            >
+            <form className="panel-body admin-token-form" onSubmit={handleTokenSubmit}>
               <input
                 className="input"
                 type="password"
@@ -418,9 +466,11 @@ export default function AdminApp() {
             </p>
           </div>
           <div className="admin-header__actions">
-            <button type="button" className="button button--ghost" onClick={() => window.location.replace('/') }>
-              Режим пользователя
-            </button>
+            {embedded && onBackToUser && (
+              <button type="button" className="button button--ghost" onClick={onBackToUser}>
+                Режим пользователя
+              </button>
+            )}
             <button
               type="button"
               className="button button--ghost"
@@ -428,7 +478,6 @@ export default function AdminApp() {
                 debugTokenAttemptedRef.current = false;
                 setToken(null);
                 setTokenInput('');
-                localStorage.removeItem(STORAGE_KEY);
               }}
             >
               Сменить токен

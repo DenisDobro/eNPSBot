@@ -12,6 +12,21 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 const ADMIN_BASE = `${API_BASE}/admin`;
 
+export function sanitizeAdminToken(rawToken: string): string {
+  const trimmed = rawToken.trim();
+
+  if (!trimmed) {
+    throw new Error('Admin token is required');
+  }
+
+  const asciiPattern = /^[\x20-\x7E]+$/;
+  if (!asciiPattern.test(trimmed)) {
+    throw new Error('Токен может содержать только латинские символы и цифры');
+  }
+
+  return trimmed;
+}
+
 export interface ApiAuthContext {
   initDataRaw: string | null;
   debugUser: TelegramUser | null;
@@ -61,12 +76,10 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
 }
 
 async function adminRequest<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
-  if (!token) {
-    throw new Error('Admin token is required');
-  }
+  const sanitizedToken = sanitizeAdminToken(token);
 
   const headers = new Headers(options.headers ?? {});
-  headers.set('x-admin-token', token);
+  headers.set('x-admin-token', sanitizedToken);
 
   const response = await fetch(`${ADMIN_BASE}${path}`, {
     ...options,

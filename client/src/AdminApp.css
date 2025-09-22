@@ -351,6 +351,12 @@
     grid-template-columns: 1fr;
   }
 
+  .admin-header__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
   .admin-responses__list {
     max-height: none;
   }

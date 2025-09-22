@@ -114,6 +114,12 @@
   color: #ffe1e8;
 }
 
+.banner--success {
+  background: rgba(49, 192, 120, 0.18);
+  border: 1px solid rgba(49, 192, 120, 0.4);
+  color: #d4fff0;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: minmax(260px, 320px) 1fr;

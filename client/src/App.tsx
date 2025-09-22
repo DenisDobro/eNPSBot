@@ -1,12 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { createProject, createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
+import {
+  createProject,
+  createSurveyRequest,
+  fetchProjects,
+  fetchSurveys,
+  sanitizeAdminToken,
+  updateSurveyRequest,
+} from './api';
 import type { ApiAuthContext } from './api';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ResponsesList } from './components/ResponsesList';
 import { SurveyStepper } from './components/SurveyStepper';
+import AdminApp from './AdminApp';
 import type { QuestionConfig, QuestionKey } from './components/SurveyStepper';
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
+
+type AppMode = 'user' | 'admin';
+
+function getInitialMode(): AppMode {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('admin') ? 'admin' : 'user';
+  } catch {
+    return 'user';
+  }
+}
 
 const METALAMP_COLORS = {
   accent: '#6C38FF',
@@ -79,15 +98,6 @@ const QUESTION_CONFIG: QuestionConfig[] = [
   },
 ];
 
-function createFallbackUser(): TelegramUser {
-  return {
-    id: 1,
-    first_name: 'Metallamp',
-    last_name: 'Team',
-    username: 'metallamp',
-  };
-}
-
 function formatApiError(error: unknown): string {
   const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
 
@@ -100,16 +110,6 @@ function formatApiError(error: unknown): string {
   }
 
   return message;
-}
-
-function buildAdminUrl(token: string): string {
-  const url = new URL(window.location.href);
-  url.pathname = '/admin';
-  url.search = '';
-  if (token) {
-    url.searchParams.set('token', token);
-  }
-  return url.toString();
 }
 
 function findNextStep(survey: SurveyRecord): number {
@@ -146,9 +146,8 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
       setAuth({ initDataRaw: initData, debugUser: null });
       setUser(webApp.initDataUnsafe?.user ?? null);
     } else {
-      const fallback = createFallbackUser();
-      setAuth({ initDataRaw: null, debugUser: fallback });
-      setUser(fallback);
+      setAuth({ initDataRaw: null, debugUser: null });
+      setUser(null);
     }
 
     setReady(true);
@@ -171,9 +170,10 @@ export default function App() {
   const [activeStep, setActiveStep] = useState(0);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [creatingSurvey, setCreatingSurvey] = useState(false);
-  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
   const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '');
+  const [mode, setMode] = useState<AppMode>(getInitialMode);
 
   useEffect(() => {
     if (adminToken) {
@@ -182,6 +182,21 @@ export default function App() {
   }, [adminToken]);
 
   const isAuthProvided = useMemo(() => auth.initDataRaw !== null || auth.debugUser !== null, [auth]);
+
+  const showError = useCallback((error: unknown) => {
+    setBanner({ type: 'error', message: formatApiError(error) });
+  }, []);
+
+  const showSuccess = useCallback((message: string) => {
+    setBanner({ type: 'success', message });
+  }, []);
+
+  useEffect(() => {
+    if (banner?.type === 'success') {
+      const timeoutId = window.setTimeout(() => setBanner(null), 3000);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [banner]);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -199,28 +214,62 @@ export default function App() {
       setAdminToken(token);
     }
 
-    return token;
-  }, [adminToken]);
+    try {
+      const sanitized = sanitizeAdminToken(token);
+      if (sanitized !== adminToken) {
+        setAdminToken(sanitized);
+      }
+      return sanitized;
+    } catch (error) {
+      showError(error);
+      return '';
+    }
+  }, [adminToken, showError]);
 
-  const handleOpenAdmin = useCallback(() => {
+  const switchToUser = useCallback(() => {
+    setMode('user');
+    setEditingSurveyId(null);
+    setCurrentSurvey(null);
+    setActiveStep(0);
+    setBanner(null);
+  }, []);
+
+  const switchToAdmin = useCallback(() => {
     const token = ensureAdminToken();
     if (!token) {
       return;
     }
 
-    const targetUrl = buildAdminUrl(token);
-    const openLink = window.Telegram?.WebApp?.openLink;
-    if (openLink) {
-      openLink(targetUrl, { try_instant_view: false });
+    setMode('admin');
+    setBanner(null);
+  }, [ensureAdminToken]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (mode === 'admin') {
+      params.set('admin', '1');
+    } else {
+      params.delete('admin');
+    }
+
+    const query = params.toString();
+    const newUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'admin') {
       return;
     }
 
-    window.location.href = targetUrl;
-  }, [ensureAdminToken]);
+    if (!ensureAdminToken()) {
+      setMode('user');
+    }
+  }, [ensureAdminToken, mode]);
 
   const refreshProjects = useCallback(
     async (searchTerm?: string) => {
-      if (!isAuthProvided) {
+      if (!isAuthProvided || mode !== 'user') {
         return;
       }
 
@@ -231,7 +280,12 @@ export default function App() {
 
       try {
         const response = await fetchProjects(auth, normalized);
-        setProjects(response.projects);
+        setProjects((prev) => {
+          const sameSize = prev.length === response.projects.length;
+          const sameIds = sameSize && prev.every((project, index) => project.id === response.projects[index]?.id);
+          return sameIds ? prev : response.projects;
+        });
+
         setSelectedProjectId((currentId) => {
           if (!response.projects.length) {
             return null;
@@ -247,35 +301,46 @@ export default function App() {
         setProjectsLoading(false);
       }
     },
-    [auth, isAuthProvided],
+    [auth, isAuthProvided, mode],
   );
 
   const refreshSurveys = useCallback(
     async (projectId: number) => {
-      if (!isAuthProvided) {
+      if (!isAuthProvided || mode !== 'user') {
         return;
       }
 
       setSurveysLoading(true);
-      setBannerError(null);
+      setBanner(null);
 
       try {
         const response = await fetchSurveys(auth, projectId);
-        setSurveys(response.surveys);
+        setSurveys((prev) => {
+          if (prev.length === response.surveys.length) {
+            const same = prev.every((survey, index) => survey.id === response.surveys[index]?.id);
+            if (same) {
+              return prev.map((survey, index) => {
+                const updated = response.surveys[index];
+                return survey.updatedAt === updated.updatedAt ? survey : updated;
+              });
+            }
+          }
+          return response.surveys;
+        });
         setCurrentSurvey((previous) =>
           previous ? response.surveys.find((survey) => survey.id === previous.id) ?? previous : null,
         );
       } catch (error) {
-        setBannerError(formatApiError(error));
+        showError(error);
       } finally {
         setSurveysLoading(false);
       }
     },
-    [auth, isAuthProvided],
+    [auth, isAuthProvided, mode, showError],
   );
 
   useEffect(() => {
-    if (!ready || !isAuthProvided) {
+    if (!ready || !isAuthProvided || mode !== 'user') {
       return;
     }
 
@@ -286,10 +351,10 @@ export default function App() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [ready, isAuthProvided, projectSearch, refreshProjects]);
+  }, [ready, isAuthProvided, mode, projectSearch, refreshProjects]);
 
   useEffect(() => {
-    if (!ready || !isAuthProvided) {
+    if (!ready || !isAuthProvided || mode !== 'user') {
       return;
     }
 
@@ -302,10 +367,10 @@ export default function App() {
     }
 
     void refreshSurveys(selectedProjectId);
-  }, [ready, isAuthProvided, selectedProjectId, refreshSurveys]);
+  }, [ready, isAuthProvided, mode, selectedProjectId, refreshSurveys]);
 
   useEffect(() => {
-    if (!isAuthProvided || !selectedProjectId) {
+    if (!isAuthProvided || !selectedProjectId || mode !== 'user') {
       return;
     }
 
@@ -315,7 +380,7 @@ export default function App() {
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [isAuthProvided, projectSearch, refreshProjects, refreshSurveys, selectedProjectId]);
+  }, [isAuthProvided, mode, projectSearch, refreshProjects, refreshSurveys, selectedProjectId]);
 
   useEffect(() => {
     if (!currentSurvey) {
@@ -325,29 +390,42 @@ export default function App() {
     setActiveStep(findNextStep(currentSurvey));
   }, [currentSurvey]);
 
-  const submitSurveyAnswer = useCallback(
-    async (surveyId: number, key: QuestionKey, value: number | string) => {
+  const submitSurveyDraft = useCallback(
+    async (surveyId: number, updates: SurveyAnswers, options?: { notify?: boolean }) => {
+      if (mode !== 'user') {
+        return;
+      }
+
+      if (!Object.keys(updates).length) {
+        if (options?.notify) {
+          showSuccess('Изменений не обнаружено');
+        }
+        return;
+      }
+
       setSavingAnswer(true);
-      setBannerError(null);
+      setBanner(null);
 
       try {
-        const normalizedValue = typeof value === 'string' ? value.trim() : value;
-        const payload = { [key]: normalizedValue } as SurveyAnswers;
-        const response = await updateSurveyRequest(auth, surveyId, payload);
+        const response = await updateSurveyRequest(auth, surveyId, updates);
 
         setSurveys((prev) => prev.map((survey) => (survey.id === response.survey.id ? response.survey : survey)));
         setCurrentSurvey((prev) => (prev && prev.id === response.survey.id ? response.survey : prev));
 
         await refreshProjects(projectSearch);
         await refreshSurveys(response.survey.projectId);
+
+        if (options?.notify) {
+          showSuccess('Изменения сохранены');
+        }
       } catch (error) {
-        setBannerError(formatApiError(error));
+        showError(error);
         throw error;
       } finally {
         setSavingAnswer(false);
       }
     },
-    [auth, projectSearch, refreshProjects, refreshSurveys],
+    [auth, mode, projectSearch, refreshProjects, refreshSurveys, showError, showSuccess],
   );
 
   const handleSurveyAnswer = useCallback(
@@ -356,14 +434,18 @@ export default function App() {
         throw new Error('Анкета не найдена');
       }
 
-      await submitSurveyAnswer(currentSurvey.id, key, value);
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
+      await submitSurveyDraft(currentSurvey.id, { [key]: normalizedValue });
     },
-    [currentSurvey, submitSurveyAnswer],
+    [currentSurvey, submitSurveyDraft],
   );
 
   const handleInlineSubmit = useCallback(
-    (surveyId: number, key: QuestionKey, value: number | string) => submitSurveyAnswer(surveyId, key, value),
-    [submitSurveyAnswer],
+    async (surveyId: number, updates: SurveyAnswers) => {
+      await submitSurveyDraft(surveyId, updates, { notify: true });
+      setEditingSurveyId(null);
+    },
+    [submitSurveyDraft],
   );
 
   const handleAddProject = useCallback(
@@ -380,7 +462,7 @@ export default function App() {
     }
 
     setCreatingSurvey(true);
-    setBannerError(null);
+    setBanner(null);
 
     try {
       const response = await createSurveyRequest(auth, { projectId: selectedProjectId });
@@ -390,17 +472,17 @@ export default function App() {
       await refreshSurveys(selectedProjectId);
       await refreshProjects(projectSearch);
     } catch (error) {
-      setBannerError(formatApiError(error));
+      showError(error);
     } finally {
       setCreatingSurvey(false);
     }
-  }, [auth, projectSearch, refreshProjects, refreshSurveys, selectedProjectId]);
+  }, [auth, projectSearch, refreshProjects, refreshSurveys, selectedProjectId, showError]);
 
   const handleEditSurvey = useCallback((survey: SurveyRecord) => {
     setCurrentSurvey(null);
     setActiveStep(0);
     setEditingSurveyId(survey.id);
-    setBannerError(null);
+    setBanner(null);
   }, []);
 
   const handleCancelEdit = useCallback(() => {
@@ -413,35 +495,99 @@ export default function App() {
     setEditingSurveyId(null);
   }, []);
 
+  const bannerMarkup =
+    banner && (
+      <div className={`banner ${banner.type === 'error' ? 'banner--error' : 'banner--success'}`}>{banner.message}</div>
+    );
+
+  const renderHeader = (activeMode: AppMode) => (
+    <header className="app-header">
+      <div>
+        <h1 className="app-title">Метрика атмосферы</h1>
+        <p className="app-subtitle">
+          Сбор внутреннего NPS помогает проектному офису понимать настроение команды в каждом спринте.
+        </p>
+      </div>
+      <div className="header-actions">
+        <div className="role-toggle">
+          <button
+            type="button"
+            className={`role-toggle__button ${activeMode === 'user' ? 'role-toggle__button--active' : ''}`}
+            onClick={switchToUser}
+            disabled={activeMode === 'user'}
+          >
+            Пользователь
+          </button>
+          <button
+            type="button"
+            className={`role-toggle__button ${activeMode === 'admin' ? 'role-toggle__button--active' : ''}`}
+            onClick={switchToAdmin}
+            disabled={activeMode === 'admin'}
+          >
+            Администратор
+          </button>
+        </div>
+        {user && (
+          <div className="user-card">
+            <span className="user-card__hello">Привет, {user.first_name}!</span>
+            <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+
+  if (mode === 'admin') {
+    return (
+      <div className="app">
+        <div className="app-gradient" />
+        <div className="app-container">
+          {renderHeader('admin')}
+          {bannerMarkup}
+          <AdminApp
+            embedded
+            initialToken={adminToken || undefined}
+            onTokenChange={(value) => setAdminToken(value ?? '')}
+            onBackToUser={switchToUser}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (ready && !isAuthProvided) {
+    return (
+      <div className="app">
+        <div className="app-gradient" />
+        <div className="app-container">
+          {renderHeader('user')}
+          {bannerMarkup}
+          <section className="panel">
+            <header className="panel-header">
+              <div>
+                <h2>Откройте приложение в Telegram</h2>
+                <p className="panel-subtitle">
+                  Для заполнения анкет необходимо запускать мини-приложение через Telegram Web App или переключиться в режим администратора.
+                </p>
+              </div>
+            </header>
+            <div className="panel-body">
+              <p className="hint">
+                Если вы хотите посмотреть данные как администратор, переключитесь в режим «Администратор» и введите токен.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <div className="app-gradient" />
       <div className="app-container">
-        <header className="app-header">
-          <div>
-            <h1 className="app-title">Метрика атмосферы</h1>
-            <p className="app-subtitle">
-              Сбор внутреннего NPS помогает проектному офису понимать настроение команды в каждом спринте.
-            </p>
-          </div>
-          <div className="header-actions">
-            <div className="role-toggle">
-              <button type="button" className="role-toggle__button role-toggle__button--active">
-                Пользователь
-              </button>
-              <button type="button" className="role-toggle__button" onClick={handleOpenAdmin}>
-                Администратор
-              </button>
-            </div>
-            {user && (
-              <div className="user-card">
-                <span className="user-card__hello">Привет, {user.first_name}!</span>
-                <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
-              </div>
-            )}
-          </div>
-        </header>
-        {bannerError && <div className="banner banner--error">{bannerError}</div>}
+        {renderHeader('user')}
+        {bannerMarkup}
         <main className="app-grid">
           <ProjectSelector
             projects={projects}
@@ -504,7 +650,7 @@ export default function App() {
                 isLoading={surveysLoading}
                 editingSurveyId={editingSurveyId}
                 onCancelEdit={handleCancelEdit}
-                onSubmitField={handleInlineSubmit}
+                onSubmitDraft={handleInlineSubmit}
                 isSaving={savingAnswer}
               />
             )}

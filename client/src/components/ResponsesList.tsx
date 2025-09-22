@@ -1,5 +1,5 @@
-import type { SurveyRecord } from '../types';
-import type { QuestionConfig, QuestionKey } from './SurveyStepper';
+import type { SurveyAnswers, SurveyRecord } from '../types';
+import type { QuestionConfig } from './SurveyStepper';
 import SurveyInlineEditor from './SurveyInlineEditor';
 
 interface ResponsesListProps {
@@ -9,7 +9,7 @@ interface ResponsesListProps {
   questions: QuestionConfig[];
   editingSurveyId: number | null;
   onCancelEdit: () => void;
-  onSubmitField: (surveyId: number, key: QuestionKey, value: number | string) => Promise<void>;
+  onSubmitDraft: (surveyId: number, updates: SurveyAnswers) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -37,7 +37,7 @@ export function ResponsesList({
   questions,
   editingSurveyId,
   onCancelEdit,
-  onSubmitField,
+  onSubmitDraft,
   isSaving,
 }: ResponsesListProps) {
   return (
@@ -62,7 +62,7 @@ export function ResponsesList({
                   survey={survey}
                   questions={questions}
                   isSaving={isSaving}
-                  onSubmit={(key, value) => onSubmitField(survey.id, key, value)}
+                  onSubmit={(draft) => onSubmitDraft(survey.id, draft)}
                   onClose={onCancelEdit}
                 />
               ) : (
