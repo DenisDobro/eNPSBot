@@ -1,0 +1,39 @@
+{
+  "name": "enpsbot",
+  "version": "1.0.0",
+  "description": "Telegram mini app for internal eNPS tracking",
+  "main": "build/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node build/index.js",
+    "lint": "tsc --noEmit",
+    "client:dev": "npm run dev --prefix client",
+    "client:build": "npm run build --prefix client",
+    "client:lint": "npm run lint --prefix client",
+    "build:all": "npm run build && npm run build --prefix client"
+  },
+  "keywords": [
+    "telegram",
+    "mini-app",
+    "enps"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "zod": "^4.1.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  }
+}
