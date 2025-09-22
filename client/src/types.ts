@@ -63,3 +63,23 @@ export interface SurveyCreationResponse {
   record: SurveyRecord;
   wasCreated: boolean;
 }
+
+export interface AdminProjectStats extends ProjectSummary {
+  uniqueRespondents: number;
+  averages: {
+    projectRecommendation: number | null;
+    managerEffectiveness: number | null;
+    teamComfort: number | null;
+    processOrganization: number | null;
+  };
+  contributionBreakdown: Record<ContributionValue, number>;
+}
+
+export interface AdminSurveyRecord extends SurveyRecord {
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string | null;
+    username: string | null;
+  };
+}

@@ -261,11 +261,6 @@ export default function App() {
 
     try {
       const response = await createSurveyRequest(auth, { projectId: selectedProject.id });
-      if (!response.record.canEdit) {
-        setBannerError('Анкета за выбранную дату уже закрыта для редактирования.');
-        return;
-      }
-
       setCurrentSurvey(response.record);
       setSurveys((prev) => {
         const filtered = prev.filter((survey) => survey.id !== response.record.id);
@@ -297,11 +292,6 @@ export default function App() {
   };
 
   const handleEditSurvey = (survey: SurveyRecord) => {
-    if (!survey.canEdit) {
-      setBannerError('Редактирование больше недоступно.');
-      return;
-    }
-
     setCurrentSurvey(survey);
     setActiveStep(findNextStep(survey));
   };

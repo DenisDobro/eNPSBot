@@ -13,6 +13,7 @@ export const config = {
     : DEFAULT_DB_PATH,
   allowInsecureInitData: process.env.ALLOW_INSECURE_INIT_DATA === 'true',
   serveFrontend: process.env.SERVE_FRONTEND !== 'false',
+  adminToken: process.env.ADMIN_TOKEN ?? '',
 };
 
 export function requireBotToken(): string {
@@ -21,4 +22,10 @@ export function requireBotToken(): string {
   }
 
   return config.botToken;
+}
+
+export function ensureAdminAccessConfigured(): void {
+  if (!config.adminToken) {
+    throw new Error('ADMIN_TOKEN is not configured');
+  }
 }

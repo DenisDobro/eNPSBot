@@ -1,4 +1,6 @@
 import type {
+  AdminProjectStats,
+  AdminSurveyRecord,
   ApiError,
   ProjectSummary,
   SurveyAnswers,
@@ -8,6 +10,7 @@ import type {
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
+const ADMIN_BASE = `${API_BASE}/admin`;
 
 export interface ApiAuthContext {
   initDataRaw: string | null;
@@ -45,7 +48,43 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
     }
 
     const errorMessage = errorPayload?.error ?? `Request failed with status ${response.status}`;
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+async function adminRequest<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
+  if (!token) {
+    throw new Error('Admin token is required');
+  }
+
+  const headers = new Headers(options.headers ?? {});
+  headers.set('x-admin-token', token);
+
+  const response = await fetch(`${ADMIN_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorPayload: ApiError | undefined;
+    try {
+      errorPayload = (await response.json()) as ApiError;
+    } catch {
+      // ignore parsing errors
+    }
+
+    const errorMessage = errorPayload?.error ?? `Request failed with status ${response.status}`;
+    const error = new Error(errorMessage) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -108,4 +147,35 @@ export function updateSurveyRequest(
 
 export function fetchSurvey(auth: ApiAuthContext, surveyId: number): Promise<{ survey: SurveyRecord }> {
   return request(`/surveys/${surveyId}`, { method: 'GET', auth });
+}
+
+export function fetchAdminProjects(token: string): Promise<{ projects: AdminProjectStats[] }> {
+  return adminRequest('/projects', token, { method: 'GET' });
+}
+
+export function fetchAdminProjectResponses(
+  token: string,
+  projectId: number,
+): Promise<{ surveys: AdminSurveyRecord[] }> {
+  return adminRequest(`/projects/${projectId}/responses`, token, { method: 'GET' });
+}
+
+export async function fetchAdminDebugToken(): Promise<{ token: string }> {
+  const response = await fetch(`${ADMIN_BASE}/debug-token`, { method: 'GET' });
+
+  if (!response.ok) {
+    let errorPayload: ApiError | undefined;
+    try {
+      errorPayload = (await response.json()) as ApiError;
+    } catch {
+      // ignore parsing errors
+    }
+
+    const errorMessage = errorPayload?.error ?? `Request failed with status ${response.status}`;
+    const error = new Error(errorMessage) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  return (await response.json()) as { token: string };
 }

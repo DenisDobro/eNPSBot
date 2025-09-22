@@ -4,8 +4,6 @@ import Database, { RunResult } from 'better-sqlite3';
 import { config } from './config';
 import { ContributionValue, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 const dbDir = path.dirname(config.databaseFile);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
@@ -13,6 +11,83 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(config.databaseFile);
 db.pragma('journal_mode = WAL');
+
+function migrateSurveysSchema(): void {
+  const existing = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'surveys'")
+    .get() as { sql: string } | undefined;
+
+  if (!existing) {
+    return;
+  }
+
+  if (!existing.sql?.includes('UNIQUE(user_id, project_id, survey_date)')) {
+    return;
+  }
+
+  db.exec(`
+    BEGIN TRANSACTION;
+    ALTER TABLE surveys RENAME TO surveys_legacy;
+    CREATE TABLE surveys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      project_id INTEGER NOT NULL,
+      survey_date TEXT NOT NULL,
+      project_recommendation INTEGER,
+      project_improvement TEXT,
+      manager_effectiveness INTEGER,
+      manager_improvement TEXT,
+      team_comfort INTEGER,
+      team_improvement TEXT,
+      process_organization INTEGER,
+      process_obstacles TEXT,
+      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
+      improvement_ideas TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(project_id) REFERENCES projects(id)
+    );
+    INSERT INTO surveys (
+      id,
+      user_id,
+      project_id,
+      survey_date,
+      project_recommendation,
+      project_improvement,
+      manager_effectiveness,
+      manager_improvement,
+      team_comfort,
+      team_improvement,
+      process_organization,
+      process_obstacles,
+      contribution_valued,
+      improvement_ideas,
+      created_at,
+      updated_at
+    )
+    SELECT
+      id,
+      user_id,
+      project_id,
+      survey_date,
+      project_recommendation,
+      project_improvement,
+      manager_effectiveness,
+      manager_improvement,
+      team_comfort,
+      team_improvement,
+      process_organization,
+      process_obstacles,
+      contribution_valued,
+      improvement_ideas,
+      created_at,
+      updated_at
+    FROM surveys_legacy;
+    DROP TABLE surveys_legacy;
+    COMMIT;
+  `);
+}
 
 type SurveyRow = {
   id: number;
@@ -62,7 +137,11 @@ export function initDB(): void {
       created_at TEXT NOT NULL,
       FOREIGN KEY(created_by) REFERENCES users(id)
     );
+  `);
 
+  migrateSurveysSchema();
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS surveys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -81,12 +160,12 @@ export function initDB(): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id),
-      FOREIGN KEY(project_id) REFERENCES projects(id),
-      UNIQUE(user_id, project_id, survey_date)
+      FOREIGN KEY(project_id) REFERENCES projects(id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
     CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys(user_id, project_id, survey_date);
+    CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys(project_id, created_at);
   `);
 }
 
@@ -135,8 +214,6 @@ export function ensureUser(user: TelegramUser): void {
 function mapSurveyRow(row: SurveyRow): SurveyRecord {
   const createdAt = row.created_at;
   const updatedAt = row.updated_at;
-  const editable = Date.now() - new Date(createdAt).getTime() <= ONE_DAY_MS;
-
   return {
     id: row.id,
     userId: row.user_id,
@@ -155,7 +232,7 @@ function mapSurveyRow(row: SurveyRow): SurveyRecord {
     improvementIdeas: row.improvement_ideas ?? undefined,
     createdAt,
     updatedAt,
-    canEdit: editable,
+    canEdit: true,
   };
 }
 
@@ -297,7 +374,7 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
 
   const insert = db
     .prepare(
-      `INSERT OR IGNORE INTO surveys (user_id, project_id, survey_date, created_at, updated_at)
+      `INSERT INTO surveys (user_id, project_id, survey_date, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?)`,
     )
     .run(userId, projectId, date, timestamp, timestamp);
@@ -307,9 +384,9 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
       `SELECT s.*, p.name AS project_name
        FROM surveys s
        JOIN projects p ON p.id = s.project_id
-       WHERE s.user_id = ? AND s.project_id = ? AND s.survey_date = ?`,
+       WHERE s.id = ?`,
     )
-    .get(userId, projectId, date) as SurveyRow | undefined;
+    .get(Number(insert.lastInsertRowid)) as SurveyRow | undefined;
 
   if (!row) {
     throw new Error('Failed to load survey after creation');
@@ -335,10 +412,6 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
   const survey = getSurveyById(id, userId);
   if (!survey) {
     throw new Error('Survey not found');
-  }
-
-  if (!survey.canEdit) {
-    throw new Error('Survey can no longer be edited');
   }
 
   const assignments: string[] = [];
@@ -380,4 +453,106 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
   update.run(...values);
 
   return getSurveyById(id, userId)!;
+}
+
+export interface AdminProjectStats extends ProjectSummary {
+  uniqueRespondents: number;
+  averages: {
+    projectRecommendation: number | null;
+    managerEffectiveness: number | null;
+    teamComfort: number | null;
+    processOrganization: number | null;
+  };
+  contributionBreakdown: Record<ContributionValue, number>;
+}
+
+export interface AdminSurveyRecord extends SurveyRecord {
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string | null;
+    username: string | null;
+  };
+}
+
+export function listAdminProjects(): AdminProjectStats[] {
+  const rows = db
+    .prepare(
+      `SELECT
+         p.id,
+         p.name,
+         p.created_at AS createdAt,
+         COUNT(s.id) AS responsesCount,
+         MAX(s.created_at) AS lastResponseAt,
+         COUNT(DISTINCT s.user_id) AS uniqueRespondents,
+         AVG(s.project_recommendation) AS avgProjectRecommendation,
+         AVG(s.manager_effectiveness) AS avgManagerEffectiveness,
+         AVG(s.team_comfort) AS avgTeamComfort,
+         AVG(s.process_organization) AS avgProcessOrganization,
+         SUM(CASE WHEN s.contribution_valued = 'yes' THEN 1 ELSE 0 END) AS contributionYes,
+         SUM(CASE WHEN s.contribution_valued = 'partial' THEN 1 ELSE 0 END) AS contributionPartial,
+         SUM(CASE WHEN s.contribution_valued = 'no' THEN 1 ELSE 0 END) AS contributionNo
+       FROM projects p
+       LEFT JOIN surveys s ON s.project_id = p.id
+       GROUP BY p.id
+       ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC`);
+
+  return (rows.all() as Array<Record<string, unknown>>).map((row) => {
+    const responsesCount = Number(row.responsesCount ?? 0);
+    const average = (value: unknown): number | null => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    return {
+      id: row.id as number,
+      name: row.name as string,
+      createdAt: row.createdAt as string,
+      responsesCount,
+      lastResponseAt: (row.lastResponseAt as string | null) ?? null,
+      uniqueRespondents: Number(row.uniqueRespondents ?? 0),
+      averages: {
+        projectRecommendation: average(row.avgProjectRecommendation),
+        managerEffectiveness: average(row.avgManagerEffectiveness),
+        teamComfort: average(row.avgTeamComfort),
+        processOrganization: average(row.avgProcessOrganization),
+      },
+      contributionBreakdown: {
+        yes: Number(row.contributionYes ?? 0) as number,
+        partial: Number(row.contributionPartial ?? 0) as number,
+        no: Number(row.contributionNo ?? 0) as number,
+      },
+    };
+  });
+}
+
+export function listAdminProjectResponses(projectId: number): AdminSurveyRecord[] {
+  const rows = db
+    .prepare(
+      `SELECT
+         s.*,
+         p.name AS project_name,
+         u.first_name,
+         u.last_name,
+         u.username
+       FROM surveys s
+       JOIN projects p ON p.id = s.project_id
+       JOIN users u ON u.id = s.user_id
+       WHERE s.project_id = ?
+       ORDER BY s.created_at DESC`,
+    )
+    .all(projectId) as Array<SurveyRow & { first_name: string; last_name: string | null; username: string | null }>;
+
+  return rows.map((row) => ({
+    ...mapSurveyRow(row),
+    user: {
+      id: row.user_id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      username: row.username,
+    },
+  }));
 }

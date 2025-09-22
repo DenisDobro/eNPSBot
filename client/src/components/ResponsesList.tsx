@@ -96,13 +96,9 @@ export function ResponsesList({ surveys, onEdit, isLoading }: ResponsesListProps
                 </dl>
               </div>
               <footer className="response-card__footer">
-                {survey.canEdit ? (
-                  <button type="button" className="button button--secondary" onClick={() => onEdit(survey)}>
-                    Продолжить редактирование
-                  </button>
-                ) : (
-                  <span className="hint">Редактирование недоступно (прошло более 24 часов)</span>
-                )}
+                <button type="button" className="button button--secondary" onClick={() => onEdit(survey)}>
+                  Редактировать ответы
+                </button>
               </footer>
             </article>
           );

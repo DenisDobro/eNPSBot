@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
 
 export type QuestionKey = keyof SurveyAnswers;
@@ -54,12 +54,6 @@ export function SurveyStepper({
 
     setError(null);
   }, [question, answers]);
-
-  const completionDeadline = useMemo(() => {
-    const createdAt = new Date(survey.createdAt);
-    const deadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
-    return deadline.toLocaleString();
-  }, [survey.createdAt]);
 
   const handleScaleSelect = async (value: number) => {
     if (!question || question.type !== 'scale') {
@@ -120,7 +114,7 @@ export function SurveyStepper({
           <div>
             <h2>Спасибо! Анкета сохранена</h2>
             <p className="panel-subtitle">
-              Вы всегда можете вернуться и отредактировать ответы до {completionDeadline}.
+              Вы всегда можете вернуться и обновить ответы в любое время.
             </p>
           </div>
         </header>
@@ -239,7 +233,7 @@ export function SurveyStepper({
             <span className="hint">Выберите ответ, чтобы перейти далее.</span>
           </div>
         )}
-        <p className="deadline-hint">Можно редактировать ответы до {completionDeadline}</p>
+        <p className="deadline-hint">Ответы можно редактировать в любой момент — изменения сохранятся сразу.</p>
       </div>
     </section>
   );
