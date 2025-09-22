@@ -319,13 +319,15 @@ export default function App() {
           <div>
             <h1 className="app-title">Метрика атмосферы</h1>
             <p className="app-subtitle">
-              Сбор внутреннего NPS помогает проектному офису понимать настроение команды в каждом спринте.
+              Сбор внутреннего NPS помогает нам понимать настроение команды в каждом спринте.
             </p>
           </div>
           {user && (
             <div className="user-card">
               <span className="user-card__hello">Привет, {user.first_name}!</span>
-              <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
+              <span className="user-card__hint">
+                Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
+              </span>
             </div>
           )}
         </header>
@@ -347,7 +349,7 @@ export default function App() {
                 <header className="panel-header">
                   <div>
                     <h2>Выберите проект</h2>
-                    <p className="panel-subtitle">Для начала заполнения анкеты выберите проект слева.</p>
+                    <p className="panel-subtitle">Выберите, пожалуйста, проект и начните заполнять анкету.</p>
                   </div>
                 </header>
               </section>
@@ -385,7 +387,12 @@ export default function App() {
               />
             )}
             {selectedProject && (
-              <ResponsesList surveys={surveys} onEdit={handleEditSurvey} isLoading={surveysLoading} />
+              <ResponsesList
+                surveys={surveys}
+                onEdit={handleEditSurvey}
+                isLoading={surveysLoading}
+                projectName={selectedProject.name}
+              />
             )}
           </div>
         </main>

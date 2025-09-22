@@ -3,13 +3,14 @@ import path from 'path';
 
 dotenv.config();
 
-const DEFAULT_DB_PATH = path.resolve(process.cwd(), 'data', 'enps.sqlite');
+const ROOT_DIR = path.resolve(__dirname, '..');
+const DEFAULT_DB_PATH = path.resolve(ROOT_DIR, 'data', 'enps.sqlite');
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   botToken: process.env.BOT_TOKEN ?? '',
   databaseFile: process.env.DATABASE_FILE
-    ? path.resolve(process.cwd(), process.env.DATABASE_FILE)
+    ? path.resolve(ROOT_DIR, process.env.DATABASE_FILE)
     : DEFAULT_DB_PATH,
   allowInsecureInitData: process.env.ALLOW_INSECURE_INIT_DATA === 'true',
   serveFrontend: process.env.SERVE_FRONTEND !== 'false',
