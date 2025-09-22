@@ -13,6 +13,7 @@ declare global {
         colorScheme?: string;
         setBackgroundColor?: (color: string) => void;
         setHeaderColor?: (color: string) => void;
+        openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
       };
     };
   }

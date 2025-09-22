@@ -88,6 +88,30 @@ function createFallbackUser(): TelegramUser {
   };
 }
 
+function formatApiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+
+  if (message.includes('Missing Telegram init data header')) {
+    return 'Откройте мини-приложение внутри Telegram — без init data запросы блокируются.';
+  }
+
+  if (message.includes('Missing debug user header')) {
+    return 'В браузере нужно включить режим отладки (ALLOW_INSECURE_INIT_DATA=true).';
+  }
+
+  return message;
+}
+
+function buildAdminUrl(token: string): string {
+  const url = new URL(window.location.href);
+  url.pathname = '/admin';
+  url.search = '';
+  if (token) {
+    url.searchParams.set('token', token);
+  }
+  return url.toString();
+}
+
 function findNextStep(survey: SurveyRecord): number {
   for (let index = 0; index < QUESTION_CONFIG.length; index += 1) {
     const question = QUESTION_CONFIG[index];
@@ -149,6 +173,25 @@ export default function App() {
   const [creatingSurvey, setCreatingSurvey] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
 
+  const handleOpenAdmin = () => {
+    const storedToken = sessionStorage.getItem('adminToken') ?? '';
+    const input = window.prompt('Введите токен администратора', storedToken) ?? '';
+    const token = input.trim();
+    if (!token) {
+      return;
+    }
+
+    sessionStorage.setItem('adminToken', token);
+    const adminUrl = buildAdminUrl(token);
+
+    const openLink = window.Telegram?.WebApp?.openLink;
+    if (openLink) {
+      openLink(adminUrl, { try_instant_view: false });
+    } else {
+      window.open(adminUrl, '_blank', 'noopener');
+    }
+  };
+
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId],
@@ -183,7 +226,7 @@ export default function App() {
         })
         .catch((error) => {
           if (!cancelled) {
-            setProjectsError(error instanceof Error ? error.message : 'Не удалось загрузить проекты');
+            setProjectsError(formatApiError(error));
           }
         })
         .finally(() => {
@@ -221,11 +264,11 @@ export default function App() {
         setCurrentSurvey(null);
         setActiveStep(0);
       })
-      .catch((error) => {
-        if (!cancelled) {
-          setBannerError(error instanceof Error ? error.message : 'Не удалось загрузить ответы');
-        }
-      })
+        .catch((error) => {
+          if (!cancelled) {
+            setBannerError(formatApiError(error));
+          }
+        })
       .finally(() => {
         if (!cancelled) {
           setSurveysLoading(false);
@@ -268,7 +311,7 @@ export default function App() {
       });
       setActiveStep(findNextStep(response.record));
     } catch (error) {
-      setBannerError(error instanceof Error ? error.message : 'Не удалось создать анкету');
+      setBannerError(formatApiError(error));
     } finally {
       setCreatingSurvey(false);
     }
@@ -312,12 +355,17 @@ export default function App() {
               Сбор внутреннего NPS помогает проектному офису понимать настроение команды в каждом спринте.
             </p>
           </div>
-          {user && (
-            <div className="user-card">
-              <span className="user-card__hello">Привет, {user.first_name}!</span>
-              <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
-            </div>
-          )}
+          <div className="header-actions">
+            <button type="button" className="button button--ghost header-actions__admin" onClick={handleOpenAdmin}>
+              Панель проекта
+            </button>
+            {user && (
+              <div className="user-card">
+                <span className="user-card__hello">Привет, {user.first_name}!</span>
+                <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
+              </div>
+            )}
+          </div>
         </header>
         {bannerError && <div className="banner banner--error">{bannerError}</div>}
         <main className="app-grid">

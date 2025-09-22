@@ -30,6 +30,16 @@
   color: #f5f6ff;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-actions__admin {
+  white-space: nowrap;
+}
+
 .app-title {
   margin: 0 0 18px;
   font-size: 42px;
@@ -467,6 +477,11 @@
     gap: 16px;
   }
 
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .app-grid {
     grid-template-columns: 1fr;
   }
@@ -502,6 +517,15 @@
   .panel {
     border-radius: 16px;
     padding: 22px;
+  }
+
+  .header-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .header-actions__admin {
+    width: 100%;
   }
 }
 
