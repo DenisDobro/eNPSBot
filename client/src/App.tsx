@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { createProject, createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
@@ -172,25 +172,32 @@ export default function App() {
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [creatingSurvey, setCreatingSurvey] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '');
+  useEffect(() => {
+    if (adminToken) {
+      sessionStorage.setItem('adminToken', adminToken);
+    }
+  }, [adminToken]);
 
-  const handleOpenAdmin = () => {
-    const storedToken = sessionStorage.getItem('adminToken') ?? '';
-    const input = window.prompt('Введите токен администратора', storedToken) ?? '';
+  const isAuthProvided = useMemo(() => auth.initDataRaw !== null || auth.debugUser !== null, [auth]);
+
+  const handleOpenAdmin = useCallback(() => {
+    const input = window.prompt('Введите токен администратора', adminToken) ?? '';
     const token = input.trim();
     if (!token) {
       return;
     }
 
-    sessionStorage.setItem('adminToken', token);
-    const adminUrl = buildAdminUrl(token);
+    setAdminToken(token);
 
     const openLink = window.Telegram?.WebApp?.openLink;
     if (openLink) {
-      openLink(adminUrl, { try_instant_view: false });
-    } else {
-      window.open(adminUrl, '_blank', 'noopener');
+      openLink(buildAdminUrl(token), { try_instant_view: false });
+      return;
     }
-  };
+
+    window.open(buildAdminUrl(token), '_blank', 'noopener');
+  }, [adminToken]);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -198,7 +205,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!ready) {
+    if (!ready || !isAuthProvided) {
       return;
     }
 
@@ -240,7 +247,7 @@ export default function App() {
       cancelled = true;
       clearTimeout(debounce);
     };
-  }, [auth, projectSearch, ready, selectedProjectId]);
+  }, [auth, isAuthProvided, projectSearch, ready, selectedProjectId]);
 
   useEffect(() => {
     if (!selectedProject || !ready) {
@@ -288,13 +295,13 @@ export default function App() {
     setActiveStep(findNextStep(currentSurvey));
   }, [currentSurvey]);
 
-  const handleAddProject = async (name: string) => {
+  const handleAddProject = useCallback(async (name: string) => {
     const response = await createProject(auth, name);
     setProjects((prev) => [response.project, ...prev.filter((project) => project.id !== response.project.id)]);
     setSelectedProjectId(response.project.id);
-  };
+  }, [auth]);
 
-  const handleCreateSurvey = async () => {
+  const handleCreateSurvey = useCallback(async () => {
     if (!selectedProject) {
       return;
     }
@@ -315,9 +322,9 @@ export default function App() {
     } finally {
       setCreatingSurvey(false);
     }
-  };
+  }, [auth, selectedProject]);
 
-  const handleSurveyAnswer = async (key: QuestionKey, value: number | string) => {
+  const handleSurveyAnswer = useCallback(async (key: QuestionKey, value: number | string) => {
     if (!currentSurvey) {
       throw new Error('Анкета не найдена');
     }
@@ -332,17 +339,17 @@ export default function App() {
     } finally {
       setSavingAnswer(false);
     }
-  };
+  }, [auth, currentSurvey]);
 
-  const handleEditSurvey = (survey: SurveyRecord) => {
+  const handleEditSurvey = useCallback((survey: SurveyRecord) => {
     setCurrentSurvey(survey);
     setActiveStep(findNextStep(survey));
-  };
+  }, []);
 
-  const handleCloseSurvey = () => {
+  const handleCloseSurvey = useCallback(() => {
     setCurrentSurvey(null);
     setActiveStep(0);
-  };
+  }, []);
 
   return (
     <div className="app">
