@@ -292,6 +292,34 @@
   gap: 10px;
 }
 
+.admin-response-card__ratings {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.admin-response-rating {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(108, 56, 255, 0.2);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.admin-response-rating__label {
+  font-size: 11px;
+  color: #5d518a;
+}
+
+.admin-response-rating__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d1e57;
+}
+
 .admin-response-card dt {
   font-weight: 600;
   color: #2d1e57;

@@ -70,8 +70,8 @@ function resolveInitialToken(storageEnabled: boolean): string | null {
   return null;
 }
 
-function formatScore(value: number | null): string {
-  if (value === null || Number.isNaN(value)) {
+function formatScore(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
     return '—';
   }
 
@@ -100,6 +100,19 @@ function formatUserName(record: AdminSurveyRecord): string {
   }
 
   return username ? `@${username}` : `ID ${record.user.id}`;
+}
+
+function RatingRow({ label, value }: { label: string; value?: number | null }) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  return (
+    <div className="admin-response-rating">
+      <span className="admin-response-rating__label">{label}</span>
+      <span className="admin-response-rating__value">{value}</span>
+    </div>
+  );
 }
 
 interface AdminAppProps {
@@ -645,11 +658,17 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                                         <div>
                                           <h3>{formatUserName(response)}</h3>
                                           <span className="admin-response-card__meta">
-                                            {formatDateTime(response.createdAt)} · Оценка проекта:{' '}
-                                            {response.projectRecommendation ?? '—'}
+                                            {formatDateTime(response.createdAt)} · Проект:{' '}
+                                            {formatScore(response.projectRecommendation)}
                                           </span>
                                         </div>
                                       </header>
+                                      <div className="admin-response-card__ratings">
+                                        <RatingRow label="Проект" value={response.projectRecommendation} />
+                                        <RatingRow label="Менеджер" value={response.managerEffectiveness} />
+                                        <RatingRow label="Команда" value={response.teamComfort} />
+                                        <RatingRow label="Процессы" value={response.processOrganization} />
+                                      </div>
                                       <dl>
                                         {response.projectImprovement && (
                                           <div>
