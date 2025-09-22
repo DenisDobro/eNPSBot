@@ -1,0 +1,378 @@
+0 verbose cli /opt/homebrew/Cellar/node/23.5.0/bin/node /opt/homebrew/bin/npm
+1 info using npm@10.9.2
+2 info using node@v23.5.0
+3 silly config load:file:/opt/homebrew/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/.npmrc
+5 silly config load:file:/Users/denisdobrovolskii/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/.npm-cache/_logs/2025-09-19T12_10_11_970Z-
+10 verbose logfile /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/.npm-cache/_logs/2025-09-19T12_10_11_970Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 silly idealTree buildDeps
+14 silly reify mark retired [
+14 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/accepts'
+14 silly reify ]
+15 silly reify mark retired [
+15 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/acorn'
+15 silly reify ]
+16 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/arg' ]
+17 silly reify mark retired [
+17 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/better-sqlite3'
+17 silly reify ]
+18 silly reify mark retired [
+18 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/bindings'
+18 silly reify ]
+19 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/bl' ]
+20 silly reify mark retired [
+20 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/body-parser'
+20 silly reify ]
+21 silly reify mark retired [
+21 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/brace-expansion'
+21 silly reify ]
+22 silly reify mark retired [
+22 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/chownr'
+22 silly reify ]
+23 silly reify mark retired [
+23 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/content-disposition'
+23 silly reify ]
+24 silly reify mark retired [
+24 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/content-type'
+24 silly reify ]
+25 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/cors' ]
+26 silly reify mark retired [
+26 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/create-require'
+26 silly reify ]
+27 silly reify mark retired [
+27 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/decompress-response'
+27 silly reify ]
+28 silly reify mark retired [
+28 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/detect-libc'
+28 silly reify ]
+29 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/diff' ]
+30 silly reify mark retired [
+30 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/dotenv'
+30 silly reify ]
+31 silly reify mark retired [
+31 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/dynamic-dedupe'
+31 silly reify ]
+32 silly reify mark retired [
+32 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/end-of-stream'
+32 silly reify ]
+33 silly reify mark retired [
+33 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/expand-template'
+33 silly reify ]
+34 silly reify mark retired [
+34 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/express'
+34 silly reify ]
+35 silly reify mark retired [
+35 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/file-uri-to-path'
+35 silly reify ]
+36 silly reify mark retired [
+36 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/finalhandler'
+36 silly reify ]
+37 silly reify mark retired [
+37 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/forwarded'
+37 silly reify ]
+38 silly reify mark retired [
+38 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/fresh'
+38 silly reify ]
+39 silly reify mark retired [
+39 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/fs-constants'
+39 silly reify ]
+40 silly reify mark retired [
+40 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/github-from-package'
+40 silly reify ]
+41 silly reify mark retired [
+41 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/make-error'
+41 silly reify ]
+42 silly reify mark retired [
+42 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/is-promise'
+42 silly reify ]
+43 silly reify mark retired [
+43 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/media-typer'
+43 silly reify ]
+44 silly reify mark retired [
+44 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/merge-descriptors'
+44 silly reify ]
+45 silly reify mark retired [
+45 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mime-types'
+45 silly reify ]
+46 silly reify mark retired [
+46 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mimic-response'
+46 silly reify ]
+47 silly reify mark retired [
+47 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp'
+47 silly reify ]
+48 silly reify mark retired [
+48 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp-classic'
+48 silly reify ]
+49 silly reify mark retired [
+49 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/napi-build-utils'
+49 silly reify ]
+50 silly reify mark retired [
+50 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/negotiator'
+50 silly reify ]
+51 silly reify mark retired [
+51 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/node-abi'
+51 silly reify ]
+52 silly reify mark retired [
+52 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp'
+52 silly reify ]
+53 silly reify mark retired [
+53 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/prebuild-install'
+53 silly reify ]
+54 silly reify mark retired [
+54 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/proxy-addr'
+54 silly reify ]
+55 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/pump' ]
+56 silly reify mark retired [
+56 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/raw-body'
+56 silly reify ]
+57 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/rc' ]
+58 silly reify mark retired [
+58 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/readable-stream'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/resolve'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/rimraf'
+60 silly reify ]
+61 silly reify mark retired [
+61 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/router'
+61 silly reify ]
+62 silly reify mark retired [
+62 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/semver'
+62 silly reify ]
+63 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/send' ]
+64 silly reify mark retired [
+64 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/serve-static'
+64 silly reify ]
+65 silly reify mark retired [
+65 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/simple-concat'
+65 silly reify ]
+66 silly reify mark retired [
+66 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/simple-get'
+66 silly reify ]
+67 silly reify mark retired [
+67 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/statuses'
+67 silly reify ]
+68 silly reify mark retired [
+68 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tar-fs'
+68 silly reify ]
+69 silly reify mark retired [
+69 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tar-stream'
+69 silly reify ]
+70 silly reify mark retired [
+70 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tree-kill'
+70 silly reify ]
+71 silly reify mark retired [
+71 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/ts-node'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/ts-node-dev'
+72 silly reify ]
+73 silly reify mark retired [
+73 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tsconfig'
+73 silly reify ]
+74 silly reify mark retired [
+74 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tunnel-agent'
+74 silly reify ]
+75 silly reify mark retired [
+75 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/type-is'
+75 silly reify ]
+76 silly reify mark retired [
+76 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/typescript'
+76 silly reify ]
+77 silly reify mark retired [
+77 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/undici-types'
+77 silly reify ]
+78 silly reify mark retired [
+78 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/v8-compile-cache-lib'
+78 silly reify ]
+79 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/yn' ]
+80 silly reify mark retired [ '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/zod' ]
+81 silly reify mark retired [
+81 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@cspotcode/source-map-support'
+81 silly reify ]
+82 silly reify mark retired [
+82 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/sourcemap-codec'
+82 silly reify ]
+83 silly reify mark retired [
+83 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/trace-mapping'
+83 silly reify ]
+84 silly reify mark retired [
+84 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node10'
+84 silly reify ]
+85 silly reify mark retired [
+85 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node12'
+85 silly reify ]
+86 silly reify mark retired [
+86 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node14'
+86 silly reify ]
+87 silly reify mark retired [
+87 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node16'
+87 silly reify ]
+88 silly reify mark retired [
+88 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/better-sqlite3'
+88 silly reify ]
+89 silly reify mark retired [
+89 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/body-parser'
+89 silly reify ]
+90 silly reify mark retired [
+90 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/connect'
+90 silly reify ]
+91 silly reify mark retired [
+91 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/cors'
+91 silly reify ]
+92 silly reify mark retired [
+92 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/express'
+92 silly reify ]
+93 silly reify mark retired [
+93 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/express-serve-static-core'
+93 silly reify ]
+94 silly reify mark retired [
+94 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/http-errors'
+94 silly reify ]
+95 silly reify mark retired [
+95 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/mime'
+95 silly reify ]
+96 silly reify mark retired [
+96 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/node'
+96 silly reify ]
+97 silly reify mark retired [
+97 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/qs'
+97 silly reify ]
+98 silly reify mark retired [
+98 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/range-parser'
+98 silly reify ]
+99 silly reify mark retired [
+99 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/send'
+99 silly reify ]
+100 silly reify mark retired [
+100 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/serve-static'
+100 silly reify ]
+101 silly reify mark retired [
+101 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/strip-bom'
+101 silly reify ]
+102 silly reify mark retired [
+102 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/strip-json-comments'
+102 silly reify ]
+103 silly reify moves {
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/accepts': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.accepts-3GsI3YdM',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/acorn': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.acorn-wN96EROQ',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/arg': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.arg-APEDGX6l',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/better-sqlite3': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.better-sqlite3-MofzcP1B',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/bindings': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.bindings-Za7La9jr',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/bl': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.bl-wL2B3XAD',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/body-parser': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.body-parser-dpbocl6K',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/brace-expansion': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.brace-expansion-ykIjUZFw',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/chownr': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.chownr-vJWqc0B9',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/content-disposition': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.content-disposition-1biSbIIS',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/content-type': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.content-type-rqeA2o7C',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/cors': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.cors-jSVJL8Lf',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/create-require': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.create-require-rkXOYYlb',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/decompress-response': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.decompress-response-iaKLp3je',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/detect-libc': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.detect-libc-mbZyJQQh',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/diff': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.diff-Wma2oA0D',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/dotenv': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.dotenv-s0LFDBph',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/dynamic-dedupe': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.dynamic-dedupe-BxXm5sQq',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/end-of-stream': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.end-of-stream-Fnl6kHoT',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/expand-template': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.expand-template-VXxwGWfL',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/express': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.express-j6b2vJFf',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/file-uri-to-path': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.file-uri-to-path-lkOF1FDD',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/finalhandler': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.finalhandler-G4uV7bX3',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/forwarded': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.forwarded-v1GUGxRy',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/fresh': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.fresh-H7TBhdCD',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/fs-constants': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.fs-constants-sHMmgXPK',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/github-from-package': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.github-from-package-VnLKoFhF',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/make-error': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.make-error-LPfIHX76',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/is-promise': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.is-promise-bVi52RwK',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/media-typer': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.media-typer-eZeUYvh9',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/merge-descriptors': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.merge-descriptors-LyL2cQGj',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mime-types': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mime-types-U0gGKUpq',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mimic-response': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mimic-response-YKk26dnC',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mkdirp-afFnqvHx',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp-classic': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mkdirp-classic-u2DkSXWZ',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/napi-build-utils': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.napi-build-utils-xwbV18zX',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/negotiator': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.negotiator-X578OzzR',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/node-abi': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.node-abi-BETm3v7c',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.path-to-regexp-Y69PMXi3',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/prebuild-install': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.prebuild-install-8dP9eW6u',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/proxy-addr': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.proxy-addr-qyj7J44d',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/pump': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.pump-oNsP5xX3',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/raw-body': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.raw-body-RyzjetNS',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/rc': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.rc-yIWZWx3Z',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/readable-stream': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.readable-stream-9toqLTGL',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/resolve': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.resolve-IzAj8B2i',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/rimraf': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.rimraf-IWYJAim1',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/router': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.router-DQtfbjxe',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/semver': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.semver-lyDoPJ89',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/send': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.send-OnoCQjxa',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/serve-static': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.serve-static-okaXZqSD',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/simple-concat': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.simple-concat-bXZQLkCZ',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/simple-get': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.simple-get-kppOkrdx',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/statuses': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.statuses-u2tEUenE',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tar-fs': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.tar-fs-00WOu9Ot',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tar-stream': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.tar-stream-tXWoJgFC',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tree-kill': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.tree-kill-2DWGeEXN',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/ts-node': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.ts-node-WD1UTwkH',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/ts-node-dev': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.ts-node-dev-0VXoYoQ6',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tsconfig': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.tsconfig-O3j0Gvh3',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/tunnel-agent': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.tunnel-agent-qIdhtQNz',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/type-is': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.type-is-dOwK4O4R',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/typescript': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.typescript-KkJ6EwCa',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/undici-types': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.undici-types-CnydKM3y',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/v8-compile-cache-lib': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.v8-compile-cache-lib-c8QnWrWZ',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/yn': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.yn-xcFeaS5L',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/zod': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.zod-pT8c4auh',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@cspotcode/source-map-support': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@cspotcode/.source-map-support-sMOxT6qK',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/sourcemap-codec': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/.sourcemap-codec-qQVZV9K6',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/trace-mapping': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@jridgewell/.trace-mapping-eOByEQH9',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node10': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/.node10-CZQeFDPC',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node12': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/.node12-kPXEJCTY',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node14': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/.node14-ylqCzRuH',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/node16': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@tsconfig/.node16-24NNbats',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/better-sqlite3': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.better-sqlite3-pMormcHw',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/body-parser': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.body-parser-StQTTRhv',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/connect': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.connect-KlTpE5cj',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/cors': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.cors-zP123WPK',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/express': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.express-0y6spaVN',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/express-serve-static-core': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.express-serve-static-core-X4hFMeZV',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/http-errors': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.http-errors-vD0JVhhm',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/mime': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.mime-VLAYO3RY',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/node': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.node-zTmWd2dF',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/qs': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.qs-TkMCrbUv',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/range-parser': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.range-parser-u1JCVOdg',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/send': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.send-aEZWMaxq',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/serve-static': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.serve-static-Zz2in6EC',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/strip-bom': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.strip-bom-HUzAaPRG',
+103 silly reify   '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/strip-json-comments': '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/@types/.strip-json-comments-xpDJkXKP'
+103 silly reify }
+104 verbose stack Error: ENOTEMPTY: directory not empty, rename '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp' -> '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mkdirp-afFnqvHx'
+104 verbose stack     at async Object.rename (node:internal/fs/promises:784:10)
+104 verbose stack     at async moveFile (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/fs/lib/move-file.js:30:5)
+104 verbose stack     at async Promise.allSettled (index 33)
+104 verbose stack     at async [reifyPackages] (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:325:11)
+104 verbose stack     at async Arborist.reify (/opt/homebrew/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:142:5)
+104 verbose stack     at async Install.exec (/opt/homebrew/lib/node_modules/npm/lib/commands/install.js:150:5)
+104 verbose stack     at async Npm.exec (/opt/homebrew/lib/node_modules/npm/lib/npm.js:207:9)
+104 verbose stack     at async module.exports (/opt/homebrew/lib/node_modules/npm/lib/cli/entry.js:74:5)
+105 error code ENOTEMPTY
+106 error syscall rename
+107 error path /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp
+108 error dest /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mkdirp-afFnqvHx
+109 error errno -66
+110 error ENOTEMPTY: directory not empty, rename '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/mkdirp' -> '/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/.mkdirp-afFnqvHx'
+111 silly unfinished npm timer reify 1758283812239
+112 silly unfinished npm timer reify:retireShallow 1758283812319
+113 verbose cwd /Users/denisdobrovolskii/Developer/eNPS/eNPSBot
+114 verbose os Darwin 24.6.0
+115 verbose node v23.5.0
+116 verbose npm  v10.9.2
+117 verbose exit -66
+118 verbose code -66
+119 error A complete log of this run can be found in: /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/.npm-cache/_logs/2025-09-19T12_10_11_970Z-debug-0.log
