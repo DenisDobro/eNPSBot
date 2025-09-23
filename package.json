@@ -5,13 +5,15 @@
   "main": "build/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc -p tsconfig.json",
+    "build:client": "npm run build --prefix client",
     "start": "node build/index.js",
     "lint": "tsc --noEmit",
     "client:dev": "npm run dev --prefix client",
-    "client:build": "npm run build --prefix client",
+    "client:build": "npm run build:client",
     "client:lint": "npm run lint --prefix client",
-    "build:all": "npm run build && npm run build --prefix client"
+    "build:all": "npm run build"
   },
   "keywords": [
     "telegram",
