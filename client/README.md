@@ -1,69 +1,34 @@
-# React + TypeScript + Vite
+# Клиентское приложение eNPSBot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite-приложение реализует Telegram-миниапп для заполнения внутреннего NPS. Ниже краткое описание архитектуры и ключевых модулей фронтенда.
 
-Currently, two official plugins are available:
+## Структура каталогов
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `app/` — точка входа UI: инициализация Telegram WebApp, загрузка фич-флагов, композиция экранов.
+- `features/` — функциональные блоки (проекты, анкета, история ответов) с собственными компонентами и хуками.
+- `shared/` — переиспользуемые части: API-клиент, типы, хук работы с темой Металампа, интеграция с Telegram.
 
-## Expanding the ESLint configuration
+## API-клиент
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+`shared/api/httpClient.ts` создает экземпляр клиента, автоматически прокидывающий `x-telegram-init-data` или `x-debug-user`. Остальные модули (`projects.ts`, `surveys.ts`, `featureFlags.ts`) предоставляют типизированные обертки над REST-эндпоинтами.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Работа с Telegram
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+`shared/telegram/useTelegramAuth.ts` инициализирует WebApp, расширяет окно и достает данные пользователя. В отсутствие Telegram-контекста подставляется тестовый пользователь (активируется в отладочном режиме, когда на сервере включен `ALLOW_INSECURE_INIT_DATA`).
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Цветовая схема управляется хуком `shared/hooks/useMetalampTheme.ts`, синхронизированным с системными настройками и событиями Telegram.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Фич-флаги на клиенте
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`app/hooks/useFeatureFlags.ts` загружает конфигурацию с бэкенда (`/api/feature-flags`) и сохраняет ее в состоянии приложения. Флаги влияют на показ аналитики, доступность создания проектов и редактирования ответов.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Хуки доменных областей
+
+- `features/projects/hooks/useProjects.ts` — поиск и выбор проектов с локальным кешом, debounce-поиском и созданием новых записей.
+- `features/surveys/hooks/useSurveyWorkflow.ts` — загрузка истории, создание ежедневной анкеты и пошаговое сохранение ответов.
+
+Оба хука принимают `HttpClient` и контролируются фич-флагами, поэтому бизнес-логика остается концентрированной и переиспользуемой.
+
+## Запуск и сборка
+
+Фронтенд стартует через `npm run client:dev`. Продакшн-сборка выполняется скриптом `npm run client:build` (автоматически вызывается при `npm run build` в корне).

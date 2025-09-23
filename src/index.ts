@@ -1,9 +1,9 @@
 import { createApp } from './app';
 import { config } from './config';
-import { initDB } from './db';
+import { initDatabase } from './lib/database';
 
 function bootstrap(): void {
-  initDB();
+  initDatabase();
   const app = createApp();
 
   app.listen(config.port, () => {

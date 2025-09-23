@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
-
-export type QuestionKey = keyof SurveyAnswers;
-
-export type QuestionConfig = {
-  key: QuestionKey;
-  title: string;
-  description?: string;
-  type: 'scale' | 'text' | 'options';
-  placeholder?: string;
-  options?: Array<{ label: string; value: ContributionValue }>;
-};
+import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../../../shared/types/api';
+import type { QuestionConfig, QuestionKey } from '../config/questions';
 
 interface SurveyStepperProps {
   survey: SurveyRecord;

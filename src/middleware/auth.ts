@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import { ensureUser } from '../db';
+import { ensureUser } from '../features/users/user.repository';
 import { config, requireBotToken } from '../config';
-import { TelegramUser } from '../types';
+import { TelegramUser } from '../shared/telegram.types';
 import { validateTelegramInitData } from '../telegram';
 
 declare global {

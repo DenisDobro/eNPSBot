@@ -1,10 +1,12 @@
-import type { SurveyRecord } from '../types';
+import type { SurveyRecord } from '../../../shared/types/api';
 
 interface ResponsesListProps {
   surveys: SurveyRecord[];
   onEdit: (survey: SurveyRecord) => void;
   isLoading: boolean;
   projectName?: string;
+  allowEditing: boolean;
+  showInsights: boolean;
 }
 
 function formatDate(date: string): string {
@@ -51,7 +53,7 @@ function isCompletedRating(stat: RatingStat): stat is RatingField & { average: n
   return stat.average !== null;
 }
 
-export function ResponsesList({ surveys, onEdit, isLoading, projectName }: ResponsesListProps) {
+export function ResponsesList({ surveys, onEdit, isLoading, projectName, allowEditing, showInsights }: ResponsesListProps) {
   const ratingStats = RATING_FIELDS.map<RatingStat>((field) => ({
     ...field,
     average: calculateAverage(surveys.map((survey) => survey[field.key])),
@@ -81,7 +83,7 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName }: Respo
         </div>
       </header>
       <div className="panel-body responses-list">
-        {surveys.length > 0 && (
+        {showInsights && surveys.length > 0 && (
           <div className="responses-insights">
             <div className="responses-insights__section">
               <h3>Средние оценки</h3>
@@ -123,10 +125,10 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName }: Respo
         )}
         {isLoading && <div className="hint">Загружаем историю…</div>}
         {!isLoading && surveys.length === 0 && <div className="hint">Пока нет заполненных анкет.</div>}
-        {surveys.map((survey) => {
-          const updated = formatDate(survey.updatedAt);
-          return (
-            <article key={survey.id} className="response-card">
+             {surveys.map((survey) => {
+              const updated = formatDate(survey.updatedAt);
+              return (
+                <article key={survey.id} className="response-card">
               <header className="response-card__header">
                 <h3>{new Date(survey.surveyDate).toLocaleDateString()}</h3>
                 <span className="response-card__meta">Обновлено: {updated}</span>
@@ -185,12 +187,14 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName }: Respo
                 </dl>
               </div>
               <footer className="response-card__footer">
-                {survey.canEdit ? (
+                {allowEditing && survey.canEdit ? (
                   <button type="button" className="button button--secondary" onClick={() => onEdit(survey)}>
                     Продолжить редактирование
                   </button>
-                ) : (
+                ) : allowEditing ? (
                   <span className="hint">Редактирование недоступно (прошло более 24 часов)</span>
+                ) : (
+                  <span className="hint">Редактирование отключено администратором</span>
                 )}
               </footer>
             </article>

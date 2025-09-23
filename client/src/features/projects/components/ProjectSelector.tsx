@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { ProjectSummary } from '../types';
+import type { ProjectSummary } from '../../../shared/types/api';
 
 interface ProjectSelectorProps {
   projects: ProjectSummary[];
@@ -11,6 +11,7 @@ interface ProjectSelectorProps {
   onAddProject: (name: string) => Promise<void>;
   isLoading: boolean;
   error?: string | null;
+  allowCreate: boolean;
 }
 
 export function ProjectSelector({
@@ -22,6 +23,7 @@ export function ProjectSelector({
   onAddProject,
   isLoading,
   error,
+  allowCreate,
 }: ProjectSelectorProps) {
   const [projectName, setProjectName] = useState('');
   const [adding, setAdding] = useState(false);
@@ -92,30 +94,35 @@ export function ProjectSelector({
           );
         })}
       </div>
-      <form className="project-add" onSubmit={handleAddProject}>
-        <label className="project-add__label" htmlFor="new-project">
-          Добавить проект
-        </label>
-        <div className="project-add__controls">
-          <input
-            id="new-project"
-            type="text"
-            value={projectName}
-            className="input"
-            onChange={(event) => setProjectName(event.target.value)}
-            placeholder="Название проекта"
-            disabled={adding}
-          />
-          <button type="submit" className="button" disabled={adding}>
-            {adding ? 'Сохраняем…' : 'Добавить'}
-          </button>
-        </div>
-        {(addError || (!projects.length && !isLoading)) && (
-          <p className={`form-hint ${addError ? 'error-message' : 'hint'}`}>
-            {addError ?? 'Добавьте проект, чтобы начать собирать обратную связь.'}
-          </p>
-        )}
-      </form>
+      {allowCreate && (
+        <form className="project-add" onSubmit={handleAddProject}>
+          <label className="project-add__label" htmlFor="new-project">
+            Добавить проект
+          </label>
+          <div className="project-add__controls">
+            <input
+              id="new-project"
+              type="text"
+              value={projectName}
+              className="input"
+              onChange={(event) => setProjectName(event.target.value)}
+              placeholder="Название проекта"
+              disabled={adding}
+            />
+            <button type="submit" className="button" disabled={adding}>
+              {adding ? 'Сохраняем…' : 'Добавить'}
+            </button>
+          </div>
+          {(addError || (!projects.length && !isLoading)) && (
+            <p className={`form-hint ${addError ? 'error-message' : 'hint'}`}>
+              {addError ?? 'Добавьте проект, чтобы начать собирать обратную связь.'}
+            </p>
+          )}
+        </form>
+      )}
+      {!allowCreate && (
+        <p className="hint">Создание новых проектов отключено администратором.</p>
+      )}
     </section>
   );
 }

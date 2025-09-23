@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { TelegramUser } from './types';
+import { TelegramUser } from './shared/telegram.types';
 
 export interface TelegramAuthPayload {
   user: TelegramUser;
