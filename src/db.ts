@@ -4,7 +4,9 @@ import Database, { RunResult } from 'better-sqlite3';
 import { config } from './config';
 import { ContributionValue, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
+
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 
 const dbDir = path.dirname(config.databaseFile);
 if (!fs.existsSync(dbDir)) {
@@ -19,12 +21,14 @@ function migrateSurveysSchema(): void {
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'surveys'")
     .get() as { sql: string } | undefined;
 
+
   if (!existing?.sql) {
     return;
   }
 
   const hasUniqueConstraint = existing.sql.includes('UNIQUE(user_id, project_id, survey_date)');
   if (hasUniqueConstraint) {
+
     return;
   }
 
@@ -49,8 +53,10 @@ function migrateSurveysSchema(): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id),
+
       FOREIGN KEY(project_id) REFERENCES projects(id),
       UNIQUE(user_id, project_id, survey_date)
+
     );
     INSERT INTO surveys (
       id,
@@ -121,6 +127,7 @@ export interface ProjectSummary {
   lastResponseAt: string | null;
 }
 
+
 export interface AdminProjectStats extends ProjectSummary {
   uniqueRespondents: number;
   averages: {
@@ -140,6 +147,7 @@ export interface AdminSurveyRecord extends SurveyRecord {
     username: string | null;
   };
 }
+
 
 export function initDB(): void {
   db.exec(`
@@ -184,8 +192,10 @@ export function initDB(): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id),
+
       FOREIGN KEY(project_id) REFERENCES projects(id),
       UNIQUE(user_id, project_id, survey_date)
+
     );
 
     CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
@@ -239,7 +249,9 @@ export function ensureUser(user: TelegramUser): void {
 function mapSurveyRow(row: SurveyRow): SurveyRecord {
   const createdAt = row.created_at;
   const updatedAt = row.updated_at;
+
   const editable = Date.now() - new Date(createdAt).getTime() <= ONE_DAY_MS;
+
 
   return {
     id: row.id,
@@ -259,7 +271,9 @@ function mapSurveyRow(row: SurveyRow): SurveyRecord {
     improvementIdeas: row.improvement_ideas ?? undefined,
     createdAt,
     updatedAt,
+
     canEdit: editable,
+
   };
 }
 
@@ -401,7 +415,9 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
 
   const insert = db
     .prepare(
+
       `INSERT OR IGNORE INTO surveys (user_id, project_id, survey_date, created_at, updated_at)
+
        VALUES (?, ?, ?, ?, ?)`,
     )
     .run(userId, projectId, date, timestamp, timestamp);
@@ -411,9 +427,11 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
       `SELECT s.*, p.name AS project_name
        FROM surveys s
        JOIN projects p ON p.id = s.project_id
+
        WHERE s.user_id = ? AND s.project_id = ? AND s.survey_date = ?`,
     )
     .get(userId, projectId, date) as SurveyRow | undefined;
+
 
   if (!row) {
     throw new Error('Failed to load survey after creation');
@@ -441,9 +459,11 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
     throw new Error('Survey not found');
   }
 
+
   if (!survey.canEdit) {
     throw new Error('Survey can no longer be edited');
   }
+
 
   const assignments: string[] = [];
   const values: Array<string | number | null> = [];

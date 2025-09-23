@@ -1,0 +1,25 @@
+
+> enpsbot@1.0.0 dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 08:07:54 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
+[dotenv@17.2.2] injecting env (3) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+Server listening on port 3000
+[INFO] 09:47:37 Restarting: /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/src/app.ts has been modified
+[doten[dotenv@17.2.2] injecting env (4) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+TypeError: Missing parameter name at index 2: /*; visit https://git.new/pathToRegexpError for info
+    at name (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp/src/index.ts:225:13)
+    at parse (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp/src/index.ts:242:62)
+    at pathToRegexp (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp/src/index.ts:480:54)
+    at Object.match (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/path-to-regexp/src/index.ts:438:28)
+    at matcher (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/router/lib/layer.js:86:23)
+    at new Layer (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/router/lib/layer.js:93:62)
+    at Function.route (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/router/index.js:428:17)
+    at Function.route (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/express/lib/application.js:257:22)
+    at Function.app.<computed> [as get] (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/node_modules/express/lib/application.js:478:22)
+    at createApp (/Users/denisdobrovolskii/Developer/eNPS/eNPSBot/src/app.ts:37:9)
+[ERROR] 09:47:38 TypeError: Missing parameter name at index 2: /*; visit https://git.new/pathToRegexpError for info
+[[INFO] 09:51:08 Restarting: /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/src/app.ts has been modified[[dotenv@17.2.2] injecting env (4) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommandServer listening on port 3000
+[INFO] 12:35:56 Restarting: /Users/denisdobrovolskii/Developer/eNPS/eNPSBot/src/telegram.ts has been modified
+[dotenv@17.2.2] injecting env (4) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+Server Server listening on port 3000

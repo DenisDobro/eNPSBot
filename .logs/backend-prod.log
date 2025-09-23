@@ -1,0 +1,6 @@
+
+> enpsbot@1.0.0 start
+> node build/index.js
+
+[dotenv@17.2.2] injecting env (4) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+Server listening on port 3000

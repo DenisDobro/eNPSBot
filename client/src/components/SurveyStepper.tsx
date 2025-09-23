@@ -1,4 +1,6 @@
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
 
 export type QuestionKey = keyof SurveyAnswers;
@@ -22,8 +24,8 @@ interface SurveyStepperProps {
   isSaving: boolean;
   onExit: () => void;
 }
-
 const SCALE_VALUES = Array.from({ length: 11 }, (_, index) => index);
+
 
 export function SurveyStepper({
   survey,
@@ -43,12 +45,15 @@ export function SurveyStepper({
 
   useEffect(() => {
     if (!question) {
+
       setCurrentValue(undefined);
       setError(null);
+
       return;
     }
 
     const answerValue = answers[question.key];
+
     const preparedValue =
       typeof answerValue === 'number' || typeof answerValue === 'string'
         ? answerValue
@@ -107,6 +112,7 @@ export function SurveyStepper({
   );
 
   const handleTextSubmit = useCallback(async () => {
+
     if (!question || question.type !== 'text') {
       return;
     }
@@ -128,6 +134,7 @@ export function SurveyStepper({
     return Math.min((activeStep / questions.length) * 100, 100);
   }, [activeStep, questions.length]);
 
+
   if (isCompleted) {
     return (
       <section className="panel">
@@ -135,7 +142,9 @@ export function SurveyStepper({
           <div>
             <h2>Спасибо! Анкета сохранена</h2>
             <p className="panel-subtitle">
+
               Вы всегда можете вернуться и отредактировать ответы до {completionDeadline}.
+
             </p>
           </div>
         </header>
@@ -174,16 +183,20 @@ export function SurveyStepper({
           {question.description && <p className="question-description">{question.description}</p>}
           {question.type === 'scale' && (
             <div className="scale-selector">
+
               {SCALE_VALUES.map((score) => {
+
                 const isActive = currentValue === score;
                 return (
                   <button
                     key={score}
                     type="button"
                     className={`scale-selector__item ${isActive ? 'scale-selector__item--active' : ''}`}
+
                     onClick={() => {
                       void handleScaleSelect(score);
                     }}
+
                     disabled={isSaving}
                   >
                     {score}
@@ -232,9 +245,11 @@ export function SurveyStepper({
                     key={option.value}
                     type="button"
                     className={`option-chip ${isActive ? 'option-chip--active' : ''}`}
+
                     onClick={() => {
                       void handleOptionSelect(option.value);
                     }}
+
                     disabled={isSaving}
                   >
                     {option.label}
@@ -258,7 +273,9 @@ export function SurveyStepper({
             <span className="hint">Выберите ответ, чтобы перейти далее.</span>
           </div>
         )}
+
         <p className="deadline-hint">Можно редактировать ответы до {completionDeadline}</p>
+
       </div>
     </section>
   );

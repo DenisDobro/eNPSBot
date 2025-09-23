@@ -17,7 +17,9 @@ import type { QuestionConfig, QuestionKey } from './components/SurveyStepper';
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
 type AppMode = 'user' | 'admin';
+
 type ThemeMode = 'light' | 'dark';
+
 
 function getInitialMode(): AppMode {
   try {
@@ -27,6 +29,7 @@ function getInitialMode(): AppMode {
     return 'user';
   }
 }
+
 
 const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
   dark: { background: '#080F2B', header: '#101940' },
@@ -227,13 +230,16 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
       webApp.ready();
       webApp.expand?.();
 
+
       const initData = webApp.initData && webApp.initData.length > 0 ? webApp.initData : null;
       setAuth({ initDataRaw: initData, debugUser: null });
       setUser(webApp.initDataUnsafe?.user ?? null);
     } else {
+
       const fallback = createFallbackUser();
       setAuth({ initDataRaw: null, debugUser: fallback });
       setUser(fallback);
+
     }
 
     setReady(true);
@@ -243,6 +249,7 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
 }
 
 export default function App() {
+
   useMetalampTheme();
 
   const { auth, user, ready } = useTelegramUser();
@@ -284,7 +291,9 @@ export default function App() {
       const timeoutId = window.setTimeout(() => setBanner(null), 3000);
       return () => window.clearTimeout(timeoutId);
     }
+
     return undefined;
+
   }, [banner]);
 
   const selectedProject = useMemo(
@@ -594,7 +603,9 @@ export default function App() {
       <div>
         <h1 className="app-title">Метрика атмосферы</h1>
         <p className="app-subtitle">
+
           Сбор внутреннего NPS помогает нам понимать настроение команды в каждом спринте.
+
         </p>
       </div>
       <div className="header-actions">
@@ -619,9 +630,11 @@ export default function App() {
         {user && (
           <div className="user-card">
             <span className="user-card__hello">Привет, {user.first_name}!</span>
+
             <span className="user-card__hint">
               Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
             </span>
+
           </div>
         )}
       </div>
@@ -696,7 +709,9 @@ export default function App() {
                 <header className="panel-header">
                   <div>
                     <h2>Выберите проект</h2>
+
                     <p className="panel-subtitle">Выберите, пожалуйста, проект и начните заполнять анкету.</p>
+
                   </div>
                 </header>
               </section>
@@ -743,7 +758,9 @@ export default function App() {
                 onCancelEdit={handleCancelEdit}
                 onSubmitDraft={handleInlineSubmit}
                 isSaving={savingAnswer}
+
                 projectName={selectedProject.name}
+
               />
             )}
           </div>

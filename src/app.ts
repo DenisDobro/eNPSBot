@@ -22,6 +22,7 @@ export function createApp(): express.Express {
   });
 
   app.use('/api/admin', adminRouter);
+
   const apiRouter = express.Router();
   apiRouter.use(telegramAuth);
   apiRouter.use('/projects', projectsRouter);
@@ -33,7 +34,9 @@ export function createApp(): express.Express {
     const clientDist = path.resolve(process.cwd(), 'client', 'dist');
     app.use(express.static(clientDist));
 
+
     app.get('*', (_req, res) => {
+
       res.sendFile(path.join(clientDist, 'index.html'));
     });
   }

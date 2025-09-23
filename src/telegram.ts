@@ -35,6 +35,7 @@ export function validateTelegramInitData(
   }
 
   const dataCheckString = dataCheckArr.join('\n');
+
   const hashBuffer = Buffer.from(hashHex, 'hex');
 
   const calculateSignature = (secret: Buffer): Buffer =>

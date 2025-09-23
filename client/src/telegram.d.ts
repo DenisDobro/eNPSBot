@@ -10,11 +10,13 @@ declare global {
         };
         ready: () => void;
         expand: () => void;
+
         colorScheme?: 'light' | 'dark' | string;
         setBackgroundColor?: (color: string) => void;
         setHeaderColor?: (color: string) => void;
         onEvent?: (eventType: string, handler: () => void) => void;
         offEvent?: (eventType: string, handler: () => void) => void;
+
         openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
       };
     };
