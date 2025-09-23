@@ -125,10 +125,10 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName, allowEd
         )}
         {isLoading && <div className="hint">Загружаем историю…</div>}
         {!isLoading && surveys.length === 0 && <div className="hint">Пока нет заполненных анкет.</div>}
-             {surveys.map((survey) => {
-              const updated = formatDate(survey.updatedAt);
-              return (
-                <article key={survey.id} className="response-card">
+        {surveys.map((survey) => {
+          const updated = formatDate(survey.updatedAt);
+          return (
+            <article key={survey.id} className="response-card">
               <header className="response-card__header">
                 <h3>{new Date(survey.surveyDate).toLocaleDateString()}</h3>
                 <span className="response-card__meta">Обновлено: {updated}</span>
@@ -144,31 +144,31 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName, allowEd
                 <dl className="response-card__details">
                   {survey.projectImprovement && (
                     <div>
-                      <dt>Что улучшить в проекте</dt>
+                      <dt>Что могло бы повысить вашу оценку проекта?</dt>
                       <dd>{survey.projectImprovement}</dd>
                     </div>
                   )}
                   {survey.managerImprovement && (
                     <div>
-                      <dt>Фидбек менеджеру</dt>
+                      <dt>Что менеджер мог бы улучшить в следующем спринте?</dt>
                       <dd>{survey.managerImprovement}</dd>
                     </div>
                   )}
                   {survey.teamImprovement && (
                     <div>
-                      <dt>Командная работа</dt>
+                      <dt>Что можно улучшить в командной работе?</dt>
                       <dd>{survey.teamImprovement}</dd>
                     </div>
                   )}
                   {survey.processObstacles && (
                     <div>
-                      <dt>Что мешало работать</dt>
+                      <dt>Что мешало в этом спринте/неделе работать эффективнее?</dt>
                       <dd>{survey.processObstacles}</dd>
                     </div>
                   )}
                   {survey.contributionValued && (
                     <div>
-                      <dt>Вклад ценится</dt>
+                      <dt>Чувствуете ли вы, что ваш вклад в проект ценится?</dt>
                       <dd>
                         {survey.contributionValued === 'yes'
                           ? 'Да'
@@ -180,7 +180,7 @@ export function ResponsesList({ surveys, onEdit, isLoading, projectName, allowEd
                   )}
                   {survey.improvementIdeas && (
                     <div>
-                      <dt>Идеи по улучшению</dt>
+                      <dt>Есть ли у вас идеи для улучшения проекта или процессов?</dt>
                       <dd>{survey.improvementIdeas}</dd>
                     </div>
                   )}
