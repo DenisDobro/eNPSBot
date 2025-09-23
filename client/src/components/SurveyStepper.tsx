@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { JSX } from 'react';
 import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
 
 export type QuestionKey = keyof SurveyAnswers;

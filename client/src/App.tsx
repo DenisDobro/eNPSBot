@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { JSX } from 'react';
 import './App.css';
 import { createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
