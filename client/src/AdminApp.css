@@ -55,6 +55,36 @@
   gap: 12px;
 }
 
+.admin-project-add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(108, 56, 255, 0.15);
+}
+
+.admin-project-add__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d1e57;
+}
+
+.admin-project-add__controls {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-project-add__hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6a5b9a;
+}
+
+.admin-project-add__hint--error {
+  color: #d94862;
+}
+
 .admin-project-card {
   border-radius: 16px;
   border: 1px solid transparent;

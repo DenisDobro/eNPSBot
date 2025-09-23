@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
-import {
-  createProject,
-  createSurveyRequest,
-  fetchProjects,
-  fetchSurveys,
-  sanitizeAdminToken,
-  updateSurveyRequest,
-} from './api';
+import { createSurveyRequest, fetchProjects, fetchSurveys, sanitizeAdminToken, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ResponsesList } from './components/ResponsesList';
@@ -546,35 +539,42 @@ export default function App() {
     [submitSurveyDraft],
   );
 
-  const handleAddProject = useCallback(
-    async (name: string) => {
-      await createProject(auth, name);
-      await refreshProjects(projectSearch);
+  const handleCreateSurvey = useCallback(
+    async (projectId?: number) => {
+      const targetProjectId = projectId ?? selectedProjectId;
+      if (!targetProjectId) {
+        return;
+      }
+
+      setCreatingSurvey(true);
+      setBanner(null);
+      setCurrentSurvey(null);
+      setActiveStep(0);
+      setEditingSurveyId(null);
+
+      try {
+        const response = await createSurveyRequest(auth, { projectId: targetProjectId });
+        setCurrentSurvey(response.record);
+        setEditingSurveyId(null);
+        setActiveStep(findNextStep(response.record));
+        await refreshSurveys(targetProjectId);
+        await refreshProjects(projectSearch);
+      } catch (error) {
+        showError(error);
+      } finally {
+        setCreatingSurvey(false);
+      }
     },
-    [auth, projectSearch, refreshProjects],
+    [auth, projectSearch, refreshProjects, refreshSurveys, selectedProjectId, showError],
   );
 
-  const handleCreateSurvey = useCallback(async () => {
-    if (!selectedProjectId) {
-      return;
-    }
-
-    setCreatingSurvey(true);
-    setBanner(null);
-
-    try {
-      const response = await createSurveyRequest(auth, { projectId: selectedProjectId });
-      setCurrentSurvey(response.record);
-      setEditingSurveyId(null);
-      setActiveStep(findNextStep(response.record));
-      await refreshSurveys(selectedProjectId);
-      await refreshProjects(projectSearch);
-    } catch (error) {
-      showError(error);
-    } finally {
-      setCreatingSurvey(false);
-    }
-  }, [auth, projectSearch, refreshProjects, refreshSurveys, selectedProjectId, showError]);
+  const handleProjectSelect = useCallback(
+    (project: ProjectSummary) => {
+      setSelectedProjectId(project.id);
+      void handleCreateSurvey(project.id);
+    },
+    [handleCreateSurvey],
+  );
 
   const handleEditSurvey = useCallback((survey: SurveyRecord) => {
     setCurrentSurvey(null);
@@ -698,8 +698,7 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             search={projectSearch}
             onSearchChange={setProjectSearch}
-            onSelect={(project) => setSelectedProjectId(project.id)}
-            onAddProject={handleAddProject}
+            onSelect={handleProjectSelect}
             isLoading={projectsLoading}
             error={projectsError}
           />
@@ -728,10 +727,16 @@ export default function App() {
                 </header>
                 <div className="panel-body">
                   <p className="hint">
-                    Анкета занимает 3–4 минуты. После каждого ответа данные сразу сохраняются в базе Металампа.
+                    Анкета открывается автоматически после выбора проекта. Если что-то пошло не так, попробуйте
+                    запустить её вручную.
                   </p>
-                  <button type="button" className="button" onClick={handleCreateSurvey} disabled={creatingSurvey}>
-                    {creatingSurvey ? 'Создаем анкету…' : 'Заполнить анкету'}
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => handleCreateSurvey(selectedProject.id)}
+                    disabled={creatingSurvey}
+                  >
+                    {creatingSurvey ? 'Готовим анкету…' : 'Заполнить анкету повторно'}
                   </button>
                 </div>
               </section>

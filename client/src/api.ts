@@ -166,6 +166,14 @@ export function fetchAdminProjects(token: string): Promise<{ projects: AdminProj
   return adminRequest('/projects', token, { method: 'GET' });
 }
 
+export function createAdminProject(token: string, name: string): Promise<{ project: AdminProjectStats }> {
+  return adminRequest('/projects', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+}
+
 export function fetchAdminProjectResponses(
   token: string,
   projectId: number,

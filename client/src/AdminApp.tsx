@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import './App.css';
 import './AdminApp.css';
-import { fetchAdminDebugToken, fetchAdminProjectResponses, fetchAdminProjects, sanitizeAdminToken } from './api';
+import {
+  createAdminProject,
+  fetchAdminDebugToken,
+  fetchAdminProjectResponses,
+  fetchAdminProjects,
+  sanitizeAdminToken,
+} from './api';
 import type { AdminProjectStats, AdminSurveyRecord } from './types';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -139,6 +145,9 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
   const [responsesLoading, setResponsesLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [responsesError, setResponsesError] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
   const debugTokenAttemptedRef = useRef(false);
 
   const selectedProject = useMemo(
@@ -308,10 +317,10 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
       return;
     }
 
-    debugTokenAttemptedRef.current = true;
-    let cancelled = false;
+      debugTokenAttemptedRef.current = true;
+      let cancelled = false;
 
-    fetchAdminDebugToken()
+      fetchAdminDebugToken()
       .then((data) => {
         if (cancelled) {
           return;
@@ -336,6 +345,50 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
       cancelled = true;
     };
   }, [embedded, token]);
+
+  const handleCreateProjectSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!token) {
+        return;
+      }
+
+      const trimmed = newProjectName.trim();
+      if (!trimmed) {
+        setCreateProjectError('Введите название проекта');
+        return;
+      }
+
+      setCreateProjectError(null);
+      setCreatingProject(true);
+
+      try {
+        const response = await createAdminProject(token, trimmed);
+        setProjects((prev) => {
+          const filtered = prev.filter((project) => project.id !== response.project.id);
+          return [response.project, ...filtered];
+        });
+        setResponses([]);
+        setSelectedProjectId(response.project.id);
+        setNewProjectName('');
+      } catch (error) {
+        setCreateProjectError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setCreatingProject(false);
+      }
+    },
+    [
+      newProjectName,
+      token,
+      setProjects,
+      setResponses,
+      setSelectedProjectId,
+      setNewProjectName,
+      setCreateProjectError,
+      setCreatingProject,
+    ],
+  );
 
   const contributionData = useMemo(() => {
     if (!selectedProject) {
@@ -577,6 +630,30 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                     })}
                   </div>
                 )}
+                <form className="admin-project-add" onSubmit={handleCreateProjectSubmit}>
+                  <label className="admin-project-add__label" htmlFor="admin-new-project">
+                    Добавить проект
+                  </label>
+                  <div className="admin-project-add__controls">
+                    <input
+                      id="admin-new-project"
+                      type="text"
+                      className="input"
+                      placeholder="Название проекта"
+                      value={newProjectName}
+                      onChange={(event) => setNewProjectName(event.target.value)}
+                      disabled={creatingProject}
+                    />
+                    <button type="submit" className="button" disabled={creatingProject || !newProjectName.trim()}>
+                      {creatingProject ? 'Сохраняем…' : 'Добавить'}
+                    </button>
+                  </div>
+                  <p
+                    className={`admin-project-add__hint ${createProjectError ? 'admin-project-add__hint--error' : ''}`}
+                  >
+                    {createProjectError ?? 'Проект появится в списке и станет доступен команде для анкет.'}
+                  </p>
+                </form>
               </div>
             </section>
             <section className="panel admin-panel">

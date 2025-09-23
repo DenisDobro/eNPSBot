@@ -21,82 +21,118 @@ function migrateSurveysSchema(): void {
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'surveys'")
     .get() as { sql: string } | undefined;
 
-
-  if (!existing?.sql) {
+  const existingSql = existing?.sql;
+  if (!existingSql) {
     return;
   }
 
-  const hasUniqueConstraint = existing.sql.includes('UNIQUE(user_id, project_id, survey_date)');
-  if (hasUniqueConstraint) {
-
+  const hasLegacyUniqueConstraint = /UNIQUE\s*\(\s*user_id\s*,\s*project_id\s*,\s*survey_date\s*\)/i.test(existingSql);
+  if (!hasLegacyUniqueConstraint) {
     return;
   }
 
-  db.exec(`
-    BEGIN TRANSACTION;
-    ALTER TABLE surveys RENAME TO surveys_legacy;
-    CREATE TABLE surveys (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      project_id INTEGER NOT NULL,
-      survey_date TEXT NOT NULL,
-      project_recommendation INTEGER,
-      project_improvement TEXT,
-      manager_effectiveness INTEGER,
-      manager_improvement TEXT,
-      team_comfort INTEGER,
-      team_improvement TEXT,
-      process_organization INTEGER,
-      process_obstacles TEXT,
-      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
-      improvement_ideas TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY(user_id) REFERENCES users(id),
+  const duplicates = db
+    .prepare(`
+      SELECT user_id, project_id, survey_date, COUNT(*) AS count
+      FROM surveys
+      GROUP BY user_id, project_id, survey_date
+      HAVING COUNT(*) > 1
+    `)
+    .all() as Array<{ user_id: number; project_id: number; survey_date: string; count: number }>;
 
-      FOREIGN KEY(project_id) REFERENCES projects(id),
-      UNIQUE(user_id, project_id, survey_date)
+  if (duplicates.length > 0) {
+    const deleted = db
+      .prepare(`
+        DELETE FROM surveys
+        WHERE EXISTS (
+          SELECT 1
+          FROM surveys dup
+          WHERE dup.user_id = surveys.user_id
+            AND dup.project_id = surveys.project_id
+            AND dup.survey_date = surveys.survey_date
+            AND (
+              dup.updated_at > surveys.updated_at OR
+              (dup.updated_at = surveys.updated_at AND dup.created_at > surveys.created_at) OR
+              (dup.updated_at = surveys.updated_at AND dup.created_at = surveys.created_at AND dup.id > surveys.id)
+            )
+        );
+      `)
+      .run();
 
+    console.warn(
+      `Removed ${deleted.changes} duplicate survey entr${deleted.changes === 1 ? 'y' : 'ies'} while migrating the schema; kept the most recently updated entry per user/project/date combination.`,
     );
-    INSERT INTO surveys (
-      id,
-      user_id,
-      project_id,
-      survey_date,
-      project_recommendation,
-      project_improvement,
-      manager_effectiveness,
-      manager_improvement,
-      team_comfort,
-      team_improvement,
-      process_organization,
-      process_obstacles,
-      contribution_valued,
-      improvement_ideas,
-      created_at,
-      updated_at
-    )
-    SELECT
-      id,
-      user_id,
-      project_id,
-      survey_date,
-      project_recommendation,
-      project_improvement,
-      manager_effectiveness,
-      manager_improvement,
-      team_comfort,
-      team_improvement,
-      process_organization,
-      process_obstacles,
-      contribution_valued,
-      improvement_ideas,
-      created_at,
-      updated_at
-    FROM surveys_legacy;
-    DROP TABLE surveys_legacy;
-    COMMIT;
-  `);
+  }
+
+  const migrate = db.transaction(() => {
+    db.exec('ALTER TABLE surveys RENAME TO surveys_legacy;');
+
+    db.exec(`
+      CREATE TABLE surveys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        project_id INTEGER NOT NULL,
+        survey_date TEXT NOT NULL,
+        project_recommendation INTEGER,
+        project_improvement TEXT,
+        manager_effectiveness INTEGER,
+        manager_improvement TEXT,
+        team_comfort INTEGER,
+        team_improvement TEXT,
+        process_organization INTEGER,
+        process_obstacles TEXT,
+        contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
+        improvement_ideas TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(project_id) REFERENCES projects(id)
+      );
+    `);
+
+    db.exec(`
+      INSERT INTO surveys (
+        id,
+        user_id,
+        project_id,
+        survey_date,
+        project_recommendation,
+        project_improvement,
+        manager_effectiveness,
+        manager_improvement,
+        team_comfort,
+        team_improvement,
+        process_organization,
+        process_obstacles,
+        contribution_valued,
+        improvement_ideas,
+        created_at,
+        updated_at
+      )
+      SELECT
+        id,
+        user_id,
+        project_id,
+        survey_date,
+        project_recommendation,
+        project_improvement,
+        manager_effectiveness,
+        manager_improvement,
+        team_comfort,
+        team_improvement,
+        process_organization,
+        process_obstacles,
+        contribution_valued,
+        improvement_ideas,
+        created_at,
+        updated_at
+      FROM surveys_legacy;
+    `);
+
+    db.exec('DROP TABLE surveys_legacy;');
+  });
+
+  migrate();
 }
 
 type SurveyRow = {
@@ -320,7 +356,7 @@ export function listProjects(search: string | undefined, limit: number): Project
   return rows;
 }
 
-export function createProject(name: string, userId: number): ProjectSummary {
+export function createProject(name: string, createdBy?: number): ProjectSummary {
   const existing = db
     .prepare('SELECT id, name, created_at as createdAt FROM projects WHERE LOWER(name) = LOWER(?)')
     .get(name) as { id: number; name: string; createdAt: string } | undefined;
@@ -351,7 +387,7 @@ export function createProject(name: string, userId: number): ProjectSummary {
       `INSERT INTO projects (name, created_by, created_at)
        VALUES (?, ?, ?)`,
     )
-    .run(name.trim(), userId, now);
+    .run(name.trim(), createdBy ?? null, now);
 
   return {
     id: Number(result.lastInsertRowid),
