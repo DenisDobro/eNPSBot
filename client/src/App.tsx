@@ -8,10 +8,11 @@ import { SurveyStepper } from './components/SurveyStepper';
 import type { QuestionConfig, QuestionKey } from './components/SurveyStepper';
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
-const METALAMP_COLORS = {
-  accent: '#6C38FF',
-  dark: '#321D73',
-  background: '#130835',
+type ThemeMode = 'light' | 'dark';
+
+const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
+  dark: { background: '#080F2B', header: '#101940' },
+  light: { background: '#F6F7FB', header: '#FFFFFF' },
 };
 
 const QUESTION_CONFIG: QuestionConfig[] = [
@@ -88,6 +89,84 @@ function createFallbackUser(): TelegramUser {
   };
 }
 
+function useMetalampTheme(): ThemeMode {
+  const [theme, setTheme] = useState<ThemeMode>('dark');
+
+  useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+    const resolveTheme = (): ThemeMode => {
+      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
+        return webApp.colorScheme;
+      }
+
+      return mediaQuery?.matches ? 'dark' : 'light';
+    };
+
+    const applyTheme = (mode: ThemeMode) => {
+      setTheme(mode);
+      if (typeof document !== 'undefined') {
+        document.body.dataset.theme = mode;
+        document.documentElement.style.setProperty('color-scheme', mode);
+      }
+    };
+
+    applyTheme(resolveTheme());
+
+    const handleTelegramTheme = () => {
+      applyTheme(resolveTheme());
+    };
+
+    const handleSystemTheme = (event: MediaQueryListEvent) => {
+      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
+        return;
+      }
+
+      applyTheme(event.matches ? 'dark' : 'light');
+    };
+
+    if (webApp?.onEvent) {
+      webApp.onEvent('themeChanged', handleTelegramTheme);
+    }
+
+    if (mediaQuery) {
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleSystemTheme);
+      } else {
+        mediaQuery.addListener(handleSystemTheme);
+      }
+    }
+
+    return () => {
+      if (webApp?.offEvent) {
+        webApp.offEvent('themeChanged', handleTelegramTheme);
+      }
+
+      if (mediaQuery) {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener('change', handleSystemTheme);
+        } else {
+          mediaQuery.removeListener(handleSystemTheme);
+        }
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) {
+      return;
+    }
+
+    const palette = TELEGRAM_THEME_COLORS[theme];
+    webApp.setBackgroundColor?.(palette.background);
+    webApp.setHeaderColor?.(palette.header);
+  }, [theme]);
+
+  return theme;
+}
+
 function findNextStep(survey: SurveyRecord): number {
   for (let index = 0; index < QUESTION_CONFIG.length; index += 1) {
     const question = QUESTION_CONFIG[index];
@@ -115,8 +194,6 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
     if (webApp) {
       webApp.ready();
       webApp.expand?.();
-      webApp.setHeaderColor?.(METALAMP_COLORS.dark);
-      webApp.setBackgroundColor?.(METALAMP_COLORS.background);
 
       const initData = webApp.initData && webApp.initData.length > 0 ? webApp.initData : null;
       setAuth({ initDataRaw: initData, debugUser: null });
@@ -134,6 +211,7 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
 }
 
 export default function App() {
+  useMetalampTheme();
   const { auth, user, ready } = useTelegramUser();
   const [projectSearch, setProjectSearch] = useState('');
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
