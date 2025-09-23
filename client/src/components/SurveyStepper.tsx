@@ -270,7 +270,17 @@ export function SurveyStepper({
             </div>
           )}
         </div>
-        <p className="deadline-hint">Можно изменить ответы до {completionDeadline}</p>
+        <div className="question-footer">
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => onStepChange(Math.max(0, activeStep - 1))}
+            disabled={isSubmitting || activeStep === 0}
+          >
+            Назад
+          </button>
+          <p className="deadline-hint">Можно изменить ответы до {completionDeadline}</p>
+        </div>
       </div>
     </section>
   );

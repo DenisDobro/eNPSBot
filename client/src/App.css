@@ -8,6 +8,10 @@
 
 }
 
+.app--survey-active {
+  padding: clamp(32px, 6vw, 72px) 0;
+}
+
 .app-gradient {
   position: fixed;
   inset: 0;
@@ -27,6 +31,11 @@
   flex-direction: column;
   gap: 32px;
 
+}
+
+.app-container--narrow {
+  width: min(720px, 100%);
+  gap: 24px;
 }
 
 .app-header {
@@ -86,6 +95,38 @@
 .burger-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(8, 15, 43, 0.25);
+}
+
+.survey-focus-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.survey-focus-header__back {
+  border: 1px solid var(--card-border);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.survey-focus-header__back:hover {
+  border-color: rgba(108, 56, 255, 0.55);
+}
+
+.survey-focus-header__title h1 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 28px);
+}
+
+.survey-focus-header__title p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .user-card {
@@ -560,6 +601,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: space-between;
 }
 
 .question-error {

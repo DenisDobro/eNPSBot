@@ -222,6 +222,32 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
 
   const selectedProjectScore = selectedProject?.averages.projectRecommendation ?? null;
 
+  const overviewCards = useMemo(
+    () => [
+      {
+        label: 'Всего ответов',
+        value: totalResponses,
+        hint: 'По всем проектам',
+      },
+      {
+        label: 'Уникальных сотрудников',
+        value: totalRespondents,
+        hint: 'С учётом всех проектов',
+      },
+      {
+        label: 'Средняя оценка портфеля',
+        value: formatScore(overallProjectScore),
+        hint: 'NPS внутри проектов',
+      },
+      {
+        label: selectedProject ? `Средняя оценка «${selectedProject.name}»` : 'Нет выбранного проекта',
+        value: formatScore(selectedProjectScore),
+        hint: selectedProject ? `Ответов: ${selectedProject.responsesCount}` : 'Выберите проект слева',
+      },
+    ],
+    [overallProjectScore, selectedProject, selectedProjectScore, totalRespondents, totalResponses],
+  );
+
   useEffect(() => {
     if (!token) {
       setProjects([]);
@@ -390,6 +416,24 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
     ],
   );
 
+  const handleBackToUser = useCallback(() => {
+    if (onBackToUser) {
+      onBackToUser();
+      return;
+    }
+
+    window.location.href = '/';
+  }, [onBackToUser]);
+
+  const handleOpenInBrowser = useCallback(() => {
+    if (!token) {
+      return;
+    }
+
+    const url = `${window.location.origin}/admin?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [token]);
+
   const contributionData = useMemo(() => {
     if (!selectedProject) {
       return [];
@@ -523,20 +567,23 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
     <div className="app admin-app">
       <div className="app-gradient" />
       <div className="app-container admin-container">
-        <header className="app-header admin-header">
-          <div>
+        <header className="admin-header">
+          <div className="admin-header__title">
             <h1 className="app-title">Проектный офис</h1>
-            <p className="app-subtitle">
-              Аналитика по проектам, средним оценкам и текстовым ответам команды. Данные обновляются в режиме
-              реального времени.
-            </p>
+            <p className="app-subtitle">Аналитика по проектам и обратной связи команды в реальном времени.</p>
           </div>
           <div className="admin-header__actions">
-            {embedded && onBackToUser && (
-              <button type="button" className="button button--ghost" onClick={onBackToUser}>
-                Режим пользователя
-              </button>
-            )}
+            <button type="button" className="button button--ghost" onClick={handleBackToUser}>
+              Режим пользователя
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={handleOpenInBrowser}
+              disabled={!token}
+            >
+              Просмотреть в браузере
+            </button>
             <button
               type="button"
               className="button button--ghost"
@@ -551,249 +598,220 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
           </div>
         </header>
         {projectsError && <div className="banner banner--error">{projectsError}</div>}
-        <div className="admin-dashboard">
-          <section className="admin-summary">
-            <div className="admin-summary-card">
-              <span className="admin-summary-label">Всего ответов</span>
-              <span className="admin-summary-value">{totalResponses}</span>
-              <span className="admin-summary-label">По всем проектам</span>
+        <section className="admin-overview">
+          {overviewCards.map((card) => (
+            <div key={card.label} className="admin-overview__card">
+              <span className="admin-overview__value">{card.value}</span>
+              <span className="admin-overview__label">{card.label}</span>
+              <span className="admin-overview__hint">{card.hint}</span>
             </div>
-            <div className="admin-summary-card">
-              <span className="admin-summary-label">Уникальных сотрудников</span>
-              <span className="admin-summary-value">{totalRespondents}</span>
-              <span className="admin-summary-label">С учётом всех проектов</span>
-            </div>
-            <div className="admin-summary-card">
-              <span className="admin-summary-label">Средняя оценка портфеля</span>
-              <span className="admin-summary-value">{formatScore(overallProjectScore)}</span>
-              <span className="admin-summary-label">NPS внутри проектов</span>
-            </div>
-            <div className="admin-summary-card">
-              <span className="admin-summary-label">
-                {selectedProject ? `Средняя оценка «${selectedProject.name}»` : 'Выберите проект'}
-              </span>
-              <span className="admin-summary-value">{formatScore(selectedProjectScore)}</span>
-              <span className="admin-summary-label">
-                {selectedProject ? `Ответов: ${selectedProject.responsesCount}` : 'Нет данных'}
-              </span>
-            </div>
-          </section>
-          <main className="admin-grid">
-            <section className="panel admin-panel">
-              <header className="panel-header">
-                <div>
-                  <h2>Проекты</h2>
-                  <p className="panel-subtitle">Выберите проект, чтобы увидеть конкретные ответы и комментарии.</p>
-                </div>
-              </header>
-              <div className="panel-body admin-projects">
-                {projectsLoading && <div className="hint">Загружаем проекты…</div>}
-                {!projectsLoading && projects.length === 0 && <div className="hint">Пока нет активных проектов.</div>}
-                {!projectsLoading && projects.length > 0 && (
-                  <div className="admin-project-list">
-                    {projects.map((project) => {
-                      const isActive = project.id === selectedProjectId;
-                      const { averages } = project;
-                      const lastResponseLabel = project.lastResponseAt
-                        ? `Последний ответ: ${formatShortDateTime(project.lastResponseAt)}`
-                        : 'Ответов пока нет';
+          ))}
+        </section>
+        <div className="admin-layout">
+          <aside className="panel admin-panel admin-panel--projects">
+            <header className="admin-panel__header">
+              <div>
+                <h2>Проекты</h2>
+                <p className="panel-subtitle">Выберите проект, чтобы увидеть ответы команды.</p>
+              </div>
+            </header>
+            <div className="admin-panel__body admin-projects">
+              {projectsLoading && <div className="hint">Загружаем проекты…</div>}
+              {!projectsLoading && projects.length === 0 && <div className="hint">Пока нет активных проектов.</div>}
+              {!projectsLoading && projects.length > 0 && (
+                <div className="admin-projects__list">
+                  {projects.map((project) => {
+                    const isActive = project.id === selectedProjectId;
+                    const { averages } = project;
+                    const lastResponseLabel = project.lastResponseAt
+                      ? `Последний ответ: ${formatShortDateTime(project.lastResponseAt)}`
+                      : 'Ответов пока нет';
 
-                      return (
-                        <button
-                          type="button"
-                          key={project.id}
-                          className={`admin-project-card ${isActive ? 'admin-project-card--active' : ''}`}
-                          onClick={() => setSelectedProjectId(project.id)}
-                        >
-                          <div className="admin-project-card__top">
-                            <h3 className="admin-project-card__name">{project.name}</h3>
+                    return (
+                      <button
+                        type="button"
+                        key={project.id}
+                        className={`admin-project-card ${isActive ? 'admin-project-card--active' : ''}`}
+                        onClick={() => setSelectedProjectId(project.id)}
+                      >
+                        <div className="admin-project-card__header">
+                          <h3 className="admin-project-card__name">{project.name}</h3>
+                          <span className="admin-project-card__badge">{project.responsesCount}</span>
+                        </div>
+                        <p className="admin-project-card__meta">{lastResponseLabel}</p>
+                        <div className="admin-project-card__stats">
+                          <div>
+                            <span className="admin-project-card__stat-label">NPS</span>
+                            <span className="admin-project-card__stat-value">{formatScore(averages.projectRecommendation)}</span>
                           </div>
-                          <span className="admin-project-card__meta">{lastResponseLabel}</span>
-                          <div className="admin-project-card__stats">
-                            <div className="admin-project-card__stats-item">
-                              <span className="admin-project-card__stat-label">Ответов</span>
-                              <span className="admin-project-card__stats-value">{project.responsesCount}</span>
-                            </div>
-                            <div className="admin-project-card__stats-item">
-                              <span className="admin-project-card__stat-label">Сотрудников</span>
-                              <span className="admin-project-card__stats-value">{project.uniqueRespondents}</span>
-                            </div>
-                            <div className="admin-project-card__stats-item">
-                              <span className="admin-project-card__stat-label">Оценка</span>
-                              <span className="admin-project-card__stats-value">
-                                {formatScore(averages.projectRecommendation)}
-                              </span>
-                            </div>
+                          <div>
+                            <span className="admin-project-card__stat-label">Сотрудники</span>
+                            <span className="admin-project-card__stat-value">{project.uniqueRespondents}</span>
                           </div>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <form className="admin-project-add" onSubmit={handleCreateProjectSubmit}>
+                <label className="admin-project-add__label" htmlFor="admin-new-project">
+                  Добавить проект
+                </label>
+                <div className="admin-project-add__controls">
+                  <input
+                    id="admin-new-project"
+                    type="text"
+                    className="input"
+                    placeholder="Название проекта"
+                    value={newProjectName}
+                    onChange={(event) => setNewProjectName(event.target.value)}
+                    disabled={creatingProject}
+                  />
+                  <button type="submit" className="button" disabled={creatingProject || !newProjectName.trim()}>
+                    {creatingProject ? 'Сохраняем…' : 'Добавить'}
+                  </button>
+                </div>
+                <p className={`admin-project-add__hint ${createProjectError ? 'admin-project-add__hint--error' : ''}`}>
+                  {createProjectError ?? 'Проект появится в списке и станет доступен команде для анкет.'}
+                </p>
+              </form>
+            </div>
+          </aside>
+          <section className="panel admin-panel admin-panel--details">
+            {selectedProject ? (
+              <>
+                <header className="admin-panel__header admin-details__header">
+                  <div>
+                    <h2>{selectedProject.name}</h2>
+                    <p className="panel-subtitle">
+                      Ответов: {responses.length}
+                      {selectedProject.lastResponseAt ? ` · Последний: ${formatShortDateTime(selectedProject.lastResponseAt)}` : ''}
+                    </p>
+                  </div>
+                  <div className="admin-details__snapshot">
+                    <span className="admin-details__snapshot-label">Средняя оценка</span>
+                    <span className="admin-details__snapshot-value">
+                      {formatAverage(selectedProject.averages.projectRecommendation)}
+                    </span>
+                  </div>
+                </header>
+                <div className="admin-metrics">
+                  {averageRows.map((row) => (
+                    <div key={row.label} className="admin-metric">
+                      <div className="admin-metric__label">
+                        <span>{row.label}</span>
+                        <span>{formatAverage(row.value)}</span>
+                      </div>
+                      <div className="admin-metric__bar">
+                        <div
+                          className="admin-metric__fill"
+                          style={{ width: `${row.value ? (Math.min(row.value, 10) / 10) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {contributionData.length > 0 && (
+                  <div className="admin-contribution-grid">
+                    {contributionData.map((item) => (
+                      <div key={item.label} className="admin-contribution-card">
+                        <span className="admin-contribution-card__label">{item.label}</span>
+                        <span className="admin-contribution-card__value">
+                          {item.count} • {item.percent}%
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <form className="admin-project-add" onSubmit={handleCreateProjectSubmit}>
-                  <label className="admin-project-add__label" htmlFor="admin-new-project">
-                    Добавить проект
-                  </label>
-                  <div className="admin-project-add__controls">
-                    <input
-                      id="admin-new-project"
-                      type="text"
-                      className="input"
-                      placeholder="Название проекта"
-                      value={newProjectName}
-                      onChange={(event) => setNewProjectName(event.target.value)}
-                      disabled={creatingProject}
-                    />
-                    <button type="submit" className="button" disabled={creatingProject || !newProjectName.trim()}>
-                      {creatingProject ? 'Сохраняем…' : 'Добавить'}
-                    </button>
-                  </div>
-                  <p
-                    className={`admin-project-add__hint ${createProjectError ? 'admin-project-add__hint--error' : ''}`}
-                  >
-                    {createProjectError ?? 'Проект появится в списке и станет доступен команде для анкет.'}
-                  </p>
-                </form>
-              </div>
-            </section>
-            <section className="panel admin-panel">
-              {selectedProject ? (
-                <>
-                  <header className="panel-header">
-                    <div>
-                      <h2>{selectedProject.name}</h2>
-                      <p className="panel-subtitle">
-                        Сводка по вкладом в проект и текстовым комментариям. Всего ответов: {responses.length}.
-                      </p>
-                    </div>
-                  </header>
-                  <div className="admin-averages">
-                    {averageRows.map((row) => (
-                      <div key={row.label} className="admin-average-row">
-                        <div className="admin-average-header">
-                          <span>{row.label}</span>
-                          <span>{formatAverage(row.value)}</span>
-                        </div>
-                        <div className="admin-average-bar">
-                          <div
-                            className="admin-average-fill"
-                            style={{ width: `${row.value ? (Math.min(row.value, 10) / 10) * 100 : 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="admin-contribution">
-                    {contributionData.map((item) => (
-                      <div key={item.label} className="admin-contribution-bar">
-                        <div
-                          className="admin-contribution-fill"
-                          style={{ transform: `scaleX(${Math.min(item.percent, 100) / 100})` }}
-                        />
-                        <div className="admin-contribution-content">
-                          <span>{item.label}</span>
-                          <span>
-                            {item.count} • {item.percent}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="panel-body admin-responses">
-                    {responsesLoading && <div className="hint">Загружаем ответы…</div>}
-                    {responsesError && <div className="error-message">{responsesError}</div>}
-                    {!responsesLoading && responses.length === 0 && !responsesError && (
-                      <div className="hint">Ответов для выбранного проекта пока нет.</div>
-                    )}
-                    {!responsesLoading && responses.length > 0 && (
-                      <div className="admin-responses__groups">
-                        {groupedResponses.map((group) => {
-                          const isOpen = expandedGroups[group.id] ?? group.isRecent;
-                          return (
-                            <div
-                              key={group.id}
-                              className={`admin-response-group ${isOpen ? 'admin-response-group--open' : ''}`}
+                <div className="admin-responses-panel">
+                  {responsesLoading && <div className="hint">Загружаем ответы…</div>}
+                  {responsesError && <div className="error-message">{responsesError}</div>}
+                  {!responsesLoading && responses.length === 0 && !responsesError && (
+                    <div className="hint">Ответов для выбранного проекта пока нет.</div>
+                  )}
+                  {!responsesLoading && responses.length > 0 && (
+                    <div className="admin-responses__groups">
+                      {groupedResponses.map((group) => {
+                        const isOpen = expandedGroups[group.id] ?? group.isRecent;
+                        return (
+                          <div key={group.id} className={`admin-response-group ${isOpen ? 'admin-response-group--open' : ''}`}>
+                            <button
+                              type="button"
+                              className="admin-response-group__header"
+                              onClick={() => toggleGroup(group.id)}
                             >
-                              <button
-                                type="button"
-                                className="admin-response-group__header"
-                                onClick={() => toggleGroup(group.id)}
-                              >
-                                <div className="admin-response-group__title">
-                                  <span>{group.label}</span>
-                                  {group.isRecent && (
-                                    <span className="admin-response-group__badge">Последние 14 дней</span>
-                                  )}
-                                </div>
-                                <span className="admin-response-group__count">{group.responses.length}</span>
-                              </button>
-                              {isOpen && (
-                                <div className="admin-response-group__body">
-                                  {group.responses.map((response) => (
-                                    <article key={response.id} className="admin-response-card">
-                                      <header>
-                                        <div>
-                                          <h3>{formatUserName(response)}</h3>
-                                          <span className="admin-response-card__meta">
-                                            {formatDateTime(response.createdAt)} · Проект:{' '}
-                                            {formatScore(response.projectRecommendation)}
-                                          </span>
-                                        </div>
-                                      </header>
-                                      <div className="admin-response-card__ratings">
-                                        <RatingRow label="Проект" value={response.projectRecommendation} />
-                                        <RatingRow label="Менеджер" value={response.managerEffectiveness} />
-                                        <RatingRow label="Команда" value={response.teamComfort} />
-                                        <RatingRow label="Процессы" value={response.processOrganization} />
+                              <div className="admin-response-group__title">
+                                <span>{group.label}</span>
+                                {group.isRecent && <span className="admin-response-group__badge">Последние 14 дней</span>}
+                              </div>
+                              <span className="admin-response-group__count">{group.responses.length}</span>
+                            </button>
+                            {isOpen && (
+                              <div className="admin-response-group__body">
+                                {group.responses.map((response) => (
+                                  <article key={response.id} className="admin-response-card">
+                                    <header>
+                                      <div>
+                                        <h3>{formatUserName(response)}</h3>
+                                        <span className="admin-response-card__meta">
+                                          {formatDateTime(response.createdAt)} · Проект: {formatScore(response.projectRecommendation)}
+                                        </span>
                                       </div>
-                                      <dl>
-                                        {response.projectImprovement && (
-                                          <div>
-                                            <dt>Проект</dt>
-                                            <dd>{response.projectImprovement}</dd>
-                                          </div>
-                                        )}
-                                        {response.managerImprovement && (
-                                          <div>
-                                            <dt>Менеджер</dt>
-                                            <dd>{response.managerImprovement}</dd>
-                                          </div>
-                                        )}
-                                        {response.teamImprovement && (
-                                          <div>
-                                            <dt>Команда</dt>
-                                            <dd>{response.teamImprovement}</dd>
-                                          </div>
-                                        )}
-                                        {response.processObstacles && (
-                                          <div>
-                                            <dt>Процессы</dt>
-                                            <dd>{response.processObstacles}</dd>
-                                          </div>
-                                        )}
-                                        {response.improvementIdeas && (
-                                          <div>
-                                            <dt>Идеи</dt>
-                                            <dd>{response.improvementIdeas}</dd>
-                                          </div>
-                                        )}
-                                      </dl>
-                                    </article>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="panel-body admin-no-selection">Выберите проект слева, чтобы увидеть подробности.</div>
-              )}
-            </section>
-          </main>
+                                    </header>
+                                    <div className="admin-response-card__ratings">
+                                      <RatingRow label="Проект" value={response.projectRecommendation} />
+                                      <RatingRow label="Менеджер" value={response.managerEffectiveness} />
+                                      <RatingRow label="Команда" value={response.teamComfort} />
+                                      <RatingRow label="Процессы" value={response.processOrganization} />
+                                    </div>
+                                    <dl>
+                                      {response.projectImprovement && (
+                                        <div>
+                                          <dt>Проект</dt>
+                                          <dd>{response.projectImprovement}</dd>
+                                        </div>
+                                      )}
+                                      {response.managerImprovement && (
+                                        <div>
+                                          <dt>Менеджер</dt>
+                                          <dd>{response.managerImprovement}</dd>
+                                        </div>
+                                      )}
+                                      {response.teamImprovement && (
+                                        <div>
+                                          <dt>Команда</dt>
+                                          <dd>{response.teamImprovement}</dd>
+                                        </div>
+                                      )}
+                                      {response.processObstacles && (
+                                        <div>
+                                          <dt>Процессы</dt>
+                                          <dd>{response.processObstacles}</dd>
+                                        </div>
+                                      )}
+                                      {response.improvementIdeas && (
+                                        <div>
+                                          <dt>Идеи</dt>
+                                          <dd>{response.improvementIdeas}</dd>
+                                        </div>
+                                      )}
+                                    </dl>
+                                  </article>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="panel-body admin-no-selection">Выберите проект в списке слева, чтобы увидеть подробности.</div>
+            )}
+          </section>
         </div>
       </div>
     </div>

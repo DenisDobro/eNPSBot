@@ -397,7 +397,7 @@ export default function App(): JSX.Element {
     try {
       const response = await createSurveyRequest(auth, { projectId: selectedProject.id });
       setCurrentSurvey(response.record);
-      setDraftAnswers({});
+      setDraftAnswers(normalizeAnswersFromSurvey(response.record));
       setActiveStep(0);
       setSurveyStarted(true);
       setSurveySubmitted(false);
@@ -460,6 +460,7 @@ export default function App(): JSX.Element {
     setSurveyStarted(false);
     setSurveySubmitted(false);
     setEditingSurveyId(null);
+    setMenuOpen(false);
     setView('history');
   }, []);
 
@@ -530,6 +531,8 @@ export default function App(): JSX.Element {
   const goToAdmin = useCallback(() => {
     window.location.href = '/admin';
   }, []);
+
+  const focusMode = surveyStarted && currentSurvey;
 
   const renderDashboard = () => {
     if (!selectedProject) {
@@ -611,6 +614,42 @@ export default function App(): JSX.Element {
               </p>
             </div>
           </header>
+        </div>
+      </div>
+    );
+  }
+
+  if (focusMode && currentSurvey) {
+    return (
+      <div className="app app--survey-active">
+        <div className="app-gradient" />
+        <div className="app-container app-container--narrow">
+          <header className="survey-focus-header">
+            <button type="button" className="survey-focus-header__back" onClick={handleExitSurvey}>
+              ← К проектам
+            </button>
+            <div className="survey-focus-header__title">
+              <h1>{currentSurvey.projectName}</h1>
+              <p>Заполните все вопросы, чтобы сохранить результат.</p>
+            </div>
+          </header>
+          {banner && (
+            <div className={`banner ${banner.type === 'error' ? 'banner--error' : 'banner--success'}`}>
+              {banner.message}
+            </div>
+          )}
+          <SurveyStepper
+            survey={currentSurvey}
+            questions={QUESTION_CONFIG}
+            answers={draftAnswers}
+            activeStep={activeStep}
+            onStepChange={setActiveStep}
+            onAnswer={handleAnswer}
+            onFinish={handleCompleteSurvey}
+            isSubmitting={savingSurvey}
+            isSubmitted={surveySubmitted}
+            onExit={handleExitSurvey}
+          />
         </div>
       </div>
     );
