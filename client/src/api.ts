@@ -174,11 +174,43 @@ export function createAdminProject(token: string, name: string): Promise<{ proje
   });
 }
 
+export function updateAdminProjectName(
+  token: string,
+  projectId: number,
+  name: string,
+): Promise<{ project: AdminProjectStats }> {
+  return adminRequest(`/projects/${projectId}`, token, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function deleteAdminProject(token: string, projectId: number): Promise<void> {
+  return adminRequest(`/projects/${projectId}`, token, { method: 'DELETE' });
+}
+
 export function fetchAdminProjectResponses(
   token: string,
   projectId: number,
 ): Promise<{ surveys: AdminSurveyRecord[] }> {
   return adminRequest(`/projects/${projectId}/responses`, token, { method: 'GET' });
+}
+
+export function updateAdminSurvey(
+  token: string,
+  surveyId: number,
+  updates: SurveyAnswers,
+): Promise<{ survey: SurveyRecord }> {
+  return adminRequest(`/surveys/${surveyId}`, token, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+}
+
+export function deleteAdminSurvey(token: string, surveyId: number): Promise<void> {
+  return adminRequest(`/surveys/${surveyId}`, token, { method: 'DELETE' });
 }
 
 export async function fetchAdminDebugToken(): Promise<{ token: string }> {

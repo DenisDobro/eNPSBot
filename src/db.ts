@@ -398,6 +398,99 @@ export function createProject(name: string, createdBy?: number): ProjectSummary 
   };
 }
 
+export function updateProjectName(id: number, name: string): ProjectSummary | undefined {
+  const existing = db
+    .prepare('SELECT id FROM projects WHERE id = ?')
+    .get(id) as { id: number } | undefined;
+
+  if (!existing) {
+    return undefined;
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Название проекта не может быть пустым');
+  }
+
+  db.prepare('UPDATE projects SET name = ? WHERE id = ?').run(trimmed, id);
+
+  return listProjectsById(id);
+}
+
+function listProjectsById(id: number): ProjectSummary {
+  return db
+    .prepare(
+      `SELECT
+         p.id,
+         p.name,
+         p.created_at AS createdAt,
+         (
+           SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id
+         ) AS responsesCount,
+         (
+           SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id
+         ) AS lastResponseAt
+       FROM projects p
+       WHERE p.id = ?`,
+    )
+    .get(id) as ProjectSummary;
+}
+
+export function deleteProject(id: number): void {
+  const transaction = db.transaction(() => {
+    db.prepare('DELETE FROM surveys WHERE project_id = ?').run(id);
+    db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  });
+
+  transaction();
+}
+
+export function deleteSurvey(id: number): void {
+  db.prepare('DELETE FROM surveys WHERE id = ?').run(id);
+}
+
+export function updateSurveyAnswers(id: number, updates: SurveyAnswers): SurveyRecord | undefined {
+  const assignments: string[] = [];
+  const values: Array<string | number | null> = [];
+
+  (Object.entries(updates) as Array<[keyof SurveyAnswers, SurveyAnswers[keyof SurveyAnswers]]>).forEach(
+    ([key, value]) => {
+      const column = surveyFieldToColumn[key];
+      if (!column) {
+        return;
+      }
+
+      if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+        assignments.push(`${column} = NULL`);
+        return;
+      }
+
+      assignments.push(`${column} = ?`);
+      values.push(value as never);
+    },
+  );
+
+  if (assignments.length > 0) {
+    const timestamp = new Date().toISOString();
+    assignments.push('updated_at = ?');
+    values.push(timestamp);
+    values.push(id);
+
+    db.prepare(`UPDATE surveys SET ${assignments.join(', ')} WHERE id = ?`).run(...values);
+  }
+
+  const row = db
+    .prepare(
+      `SELECT s.*, p.name AS project_name
+       FROM surveys s
+       JOIN projects p ON p.id = s.project_id
+       WHERE s.id = ?`,
+    )
+    .get(id) as SurveyRow | undefined;
+
+  return row ? mapSurveyRow(row) : undefined;
+}
+
 export function getSurveyById(id: number, userId: number): SurveyRecord | undefined {
   const row = db
     .prepare(
