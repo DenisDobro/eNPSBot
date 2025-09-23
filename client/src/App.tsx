@@ -414,6 +414,11 @@ export default function App(): JSX.Element {
     setDraftAnswers((prev) => ({ ...prev, [key]: normalized as never }));
   }, []);
 
+  const mandatoryKeys = useMemo(
+    () => QUESTION_CONFIG.filter((question) => question.type !== 'text').map((question) => question.key),
+    [],
+  );
+
   const handleCompleteSurvey = useCallback(async () => {
     if (!currentSurvey) {
       return;
@@ -427,8 +432,9 @@ export default function App(): JSX.Element {
       }
     });
 
-    if (Object.keys(payload).length < QUESTION_CONFIG.length) {
-      setBanner({ type: 'error', message: 'Ответьте на все вопросы перед отправкой.' });
+    const missingMandatory = mandatoryKeys.filter((key) => payload[key] === undefined);
+    if (missingMandatory.length > 0) {
+      setBanner({ type: 'error', message: 'Ответьте на все обязательные вопросы перед отправкой.' });
       return;
     }
 
@@ -451,7 +457,7 @@ export default function App(): JSX.Element {
     } finally {
       setSavingSurvey(false);
     }
-  }, [auth, currentSurvey, draftAnswers, projectSearch, refreshProjects, refreshSurveys, showError]);
+  }, [auth, currentSurvey, draftAnswers, mandatoryKeys, projectSearch, refreshProjects, refreshSurveys, showError]);
 
   const handleExitSurvey = useCallback(() => {
     setCurrentSurvey(null);
@@ -588,17 +594,28 @@ export default function App(): JSX.Element {
   };
 
   const renderHistory = () => (
-    <ResponsesList
-      surveys={surveys}
-      questions={QUESTION_CONFIG}
-      isLoading={surveysLoading}
-      onEdit={handleEditSurvey}
-      editingSurveyId={editingSurveyId}
-      onCancelEdit={handleCancelEdit}
-      onSubmitDraft={handleInlineSubmit}
-      isSaving={savingSurvey}
-      projectName={selectedProject?.name}
-    />
+    <>
+      <section className="panel history-header">
+        <div>
+          <h2>Мои ответы</h2>
+          <p className="panel-subtitle">История заполненных анкет по выбранному проекту.</p>
+        </div>
+        <button type="button" className="button button--ghost" onClick={openDashboard}>
+          ← Вернуться к проектам
+        </button>
+      </section>
+      <ResponsesList
+        surveys={surveys}
+        questions={QUESTION_CONFIG}
+        isLoading={surveysLoading}
+        onEdit={handleEditSurvey}
+        editingSurveyId={editingSurveyId}
+        onCancelEdit={handleCancelEdit}
+        onSubmitDraft={handleInlineSubmit}
+        isSaving={savingSurvey}
+        projectName={selectedProject?.name}
+      />
+    </>
   );
 
   if (ready && !isAuthProvided) {
