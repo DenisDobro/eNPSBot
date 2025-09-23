@@ -1,6 +1,4 @@
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
 
 export type QuestionKey = keyof SurveyAnswers;
@@ -20,12 +18,15 @@ interface SurveyStepperProps {
   answers: SurveyAnswers;
   activeStep: number;
   onStepChange: (next: number) => void;
-  onSubmitAnswer: (key: QuestionKey, value: number | string) => Promise<void>;
-  isSaving: boolean;
+  onAnswer: (key: QuestionKey, value: number | string) => void;
+  onFinish: () => Promise<void>;
+  isSubmitting: boolean;
+  isSubmitted: boolean;
   onExit: () => void;
 }
-const SCALE_VALUES = Array.from({ length: 11 }, (_, index) => index);
 
+const SCALE_VALUES = Array.from({ length: 11 }, (_, index) => index);
+const COMPLETION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function SurveyStepper({
   survey,
@@ -33,27 +34,27 @@ export function SurveyStepper({
   answers,
   activeStep,
   onStepChange,
-  onSubmitAnswer,
-  isSaving,
+  onAnswer,
+  onFinish,
+  isSubmitting,
+  isSubmitted,
   onExit,
-}: SurveyStepperProps) {
+}: SurveyStepperProps): JSX.Element | null {
   const [currentValue, setCurrentValue] = useState<string | number | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   const question = questions[activeStep];
   const isCompleted = activeStep >= questions.length;
 
   useEffect(() => {
     if (!question) {
-
       setCurrentValue(undefined);
-      setError(null);
-
+      setFieldError(null);
       return;
     }
 
     const answerValue = answers[question.key];
-
     const preparedValue =
       typeof answerValue === 'number' || typeof answerValue === 'string'
         ? answerValue
@@ -62,69 +63,83 @@ export function SurveyStepper({
         : undefined;
 
     setCurrentValue(preparedValue);
-    setError(null);
+    setFieldError(null);
   }, [answers, question]);
+
+  useEffect(() => {
+    if (!isCompleted) {
+      setFinishError(null);
+    }
+  }, [isCompleted]);
 
   const completionDeadline = useMemo(() => {
     const createdAt = new Date(survey.createdAt);
-    const deadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+    const deadline = new Date(createdAt.getTime() + COMPLETION_WINDOW_MS);
     return deadline.toLocaleString();
   }, [survey.createdAt]);
 
   const commitAnswer = useCallback(
-    async (value: number | string) => {
-      if (!question || isSaving) {
+    (value: number | string) => {
+      if (!question || isSubmitting) {
         return;
       }
 
-      setError(null);
+      setFieldError(null);
       setCurrentValue(value);
-      try {
-        await onSubmitAnswer(question.key, value);
-        onStepChange(activeStep + 1);
-      } catch (err) {
-        setError((err as Error).message);
-      }
+      onAnswer(question.key, value);
+      onStepChange(activeStep + 1);
     },
-    [activeStep, isSaving, onStepChange, onSubmitAnswer, question],
+    [activeStep, isSubmitting, onAnswer, onStepChange, question],
   );
 
   const handleScaleSelect = useCallback(
-    async (value: number) => {
+    (value: number) => {
       if (!question || question.type !== 'scale') {
         return;
       }
 
-      await commitAnswer(value);
+      commitAnswer(value);
     },
     [commitAnswer, question],
   );
 
   const handleOptionSelect = useCallback(
-    async (value: ContributionValue) => {
+    (value: ContributionValue) => {
       if (!question || question.type !== 'options') {
         return;
       }
 
-      await commitAnswer(value);
+      commitAnswer(value);
     },
     [commitAnswer, question],
   );
 
-  const handleTextSubmit = useCallback(async () => {
-
-    if (!question || question.type !== 'text') {
+  const handleTextSubmit = useCallback(() => {
+    if (!question || question.type !== 'text' || isSubmitting) {
       return;
     }
 
     const value = typeof currentValue === 'string' ? currentValue.trim() : '';
     if (!value) {
-      setError('Напишите короткий комментарий — это поможет команде.');
+      setFieldError('Напишите короткий комментарий — это поможет команде.');
       return;
     }
 
-    await commitAnswer(value);
-  }, [commitAnswer, currentValue, question]);
+    commitAnswer(value);
+  }, [commitAnswer, currentValue, isSubmitting, question]);
+
+  const handleFinish = useCallback(async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setFinishError(null);
+    try {
+      await onFinish();
+    } catch (error) {
+      setFinishError((error as Error).message);
+    }
+  }, [isSubmitting, onFinish]);
 
   const progress = useMemo(() => {
     if (!questions.length) {
@@ -134,26 +149,41 @@ export function SurveyStepper({
     return Math.min((activeStep / questions.length) * 100, 100);
   }, [activeStep, questions.length]);
 
-
   if (isCompleted) {
+    if (isSubmitted) {
+      return (
+        <section className="panel">
+          <header className="panel-header">
+            <div>
+              <h2>Спасибо! Анкета сохранена</h2>
+              <p className="panel-subtitle">Вы можете отредактировать ответы до {completionDeadline} в разделе истории.</p>
+            </div>
+          </header>
+          <div className="panel-body">
+            <p className="success-message">
+              Мы передали ответы проектному офису. Если заметите что-то, что стоит уточнить, просто отредактируйте запись в истории.
+            </p>
+            <button type="button" className="button" onClick={onExit}>
+              Перейти к истории ответов
+            </button>
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="panel">
         <header className="panel-header">
           <div>
-            <h2>Спасибо! Анкета сохранена</h2>
-            <p className="panel-subtitle">
-
-              Вы всегда можете вернуться и отредактировать ответы до {completionDeadline}.
-
-            </p>
+            <h2>Готово к отправке</h2>
+            <p className="panel-subtitle">Проверьте ответы и отправьте анкету, чтобы сохранить результат.</p>
           </div>
         </header>
         <div className="panel-body">
-          <p className="success-message">
-            Мы уже передали ответы команде проектного офиса. Спасибо за честность и внимание к деталям!
-          </p>
-          <button type="button" className="button button--secondary" onClick={onExit}>
-            Вернуться к проектам
+          <p className="hint">Вы всегда сможете изменить ответы в течение суток после отправки.</p>
+          {finishError && <p className="error-message">{finishError}</p>}
+          <button type="button" className="button" onClick={handleFinish} disabled={isSubmitting}>
+            {isSubmitting ? 'Отправляем…' : 'Отправить ответы'}
           </button>
         </div>
       </section>
@@ -170,7 +200,7 @@ export function SurveyStepper({
         <div>
           <h2>{survey.projectName}</h2>
           <p className="panel-subtitle">
-            Шаг {activeStep + 1} из {questions.length}. Ответы сохраняются сразу после отправки.
+            Шаг {activeStep + 1} из {questions.length}. Ответы сохранятся после завершения анкеты.
           </p>
         </div>
         <div className="progress">
@@ -181,23 +211,18 @@ export function SurveyStepper({
         <div className="question-block">
           <h3 className="question-title">{question.title}</h3>
           {question.description && <p className="question-description">{question.description}</p>}
+
           {question.type === 'scale' && (
             <div className="scale-selector">
-
               {SCALE_VALUES.map((score) => {
-
                 const isActive = currentValue === score;
                 return (
                   <button
                     key={score}
                     type="button"
                     className={`scale-selector__item ${isActive ? 'scale-selector__item--active' : ''}`}
-
-                    onClick={() => {
-                      void handleScaleSelect(score);
-                    }}
-
-                    disabled={isSaving}
+                    onClick={() => handleScaleSelect(score)}
+                    disabled={isSubmitting}
                   >
                     {score}
                   </button>
@@ -205,52 +230,18 @@ export function SurveyStepper({
               })}
             </div>
           )}
-          {question.type === 'text' && (
-            <form
-              className="text-answer"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handleTextSubmit();
-              }}
-            >
-              <textarea
-                value={typeof currentValue === 'string' ? currentValue : ''}
-                onChange={(event) => setCurrentValue(event.target.value)}
-                className="textarea"
-                placeholder={question.placeholder ?? 'Напишите короткий ответ'}
-                rows={4}
-                disabled={isSaving}
-              />
-              <div className="question-actions">
-                <button type="submit" className="button" disabled={isSaving}>
-                  {isSaving ? 'Сохраняем…' : 'Сохранить ответ'}
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={() => onStepChange(Math.max(0, activeStep - 1))}
-                  disabled={isSaving || activeStep === 0}
-                >
-                  Назад
-                </button>
-              </div>
-            </form>
-          )}
-          {question.type === 'options' && (
+
+          {question.type === 'options' && question.options && (
             <div className="options-selector">
-              {question.options?.map((option) => {
+              {question.options.map((option) => {
                 const isActive = currentValue === option.value;
                 return (
                   <button
                     key={option.value}
                     type="button"
                     className={`option-chip ${isActive ? 'option-chip--active' : ''}`}
-
-                    onClick={() => {
-                      void handleOptionSelect(option.value);
-                    }}
-
-                    disabled={isSaving}
+                    onClick={() => handleOptionSelect(option.value)}
+                    disabled={isSubmitting}
                   >
                     {option.label}
                   </button>
@@ -258,24 +249,27 @@ export function SurveyStepper({
               })}
             </div>
           )}
+
+          {question.type === 'text' && (
+            <div className="text-answer">
+              <textarea
+                className="textarea"
+                placeholder={question.placeholder}
+                value={typeof currentValue === 'string' ? currentValue : ''}
+                onChange={(event) => {
+                  setCurrentValue(event.target.value);
+                  setFieldError(null);
+                }}
+                disabled={isSubmitting}
+              />
+              <button type="button" className="button" onClick={handleTextSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Сохраняем…' : 'Сохранить ответ'}
+              </button>
+              {fieldError && <p className="error-message">{fieldError}</p>}
+            </div>
+          )}
         </div>
-        {error && <div className="error-message question-error">{error}</div>}
-        {question.type !== 'text' && (
-          <div className="question-footer">
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => onStepChange(Math.max(0, activeStep - 1))}
-              disabled={isSaving || activeStep === 0}
-            >
-              Назад
-            </button>
-            <span className="hint">Выберите ответ, чтобы перейти далее.</span>
-          </div>
-        )}
-
-        <p className="deadline-hint">Можно редактировать ответы до {completionDeadline}</p>
-
+        <p className="deadline-hint">Можно изменить ответы до {completionDeadline}</p>
       </div>
     </section>
   );
