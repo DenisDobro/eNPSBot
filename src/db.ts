@@ -4,9 +4,7 @@ import Database, { RunResult } from 'better-sqlite3';
 import { config } from './config';
 import { ContributionValue, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
-
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 
 const dbDir = path.dirname(config.databaseFile);
 if (!fs.existsSync(dbDir)) {
@@ -21,118 +19,78 @@ function migrateSurveysSchema(): void {
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'surveys'")
     .get() as { sql: string } | undefined;
 
-  const existingSql = existing?.sql;
-  if (!existingSql) {
+  if (!existing?.sql) {
     return;
   }
 
-  const hasLegacyUniqueConstraint = /UNIQUE\s*\(\s*user_id\s*,\s*project_id\s*,\s*survey_date\s*\)/i.test(existingSql);
-  if (!hasLegacyUniqueConstraint) {
+  const hasUniqueConstraint = existing.sql.includes('UNIQUE(user_id, project_id, survey_date)');
+  if (hasUniqueConstraint) {
     return;
   }
 
-  const duplicates = db
-    .prepare(`
-      SELECT user_id, project_id, survey_date, COUNT(*) AS count
-      FROM surveys
-      GROUP BY user_id, project_id, survey_date
-      HAVING COUNT(*) > 1
-    `)
-    .all() as Array<{ user_id: number; project_id: number; survey_date: string; count: number }>;
-
-  if (duplicates.length > 0) {
-    const deleted = db
-      .prepare(`
-        DELETE FROM surveys
-        WHERE EXISTS (
-          SELECT 1
-          FROM surveys dup
-          WHERE dup.user_id = surveys.user_id
-            AND dup.project_id = surveys.project_id
-            AND dup.survey_date = surveys.survey_date
-            AND (
-              dup.updated_at > surveys.updated_at OR
-              (dup.updated_at = surveys.updated_at AND dup.created_at > surveys.created_at) OR
-              (dup.updated_at = surveys.updated_at AND dup.created_at = surveys.created_at AND dup.id > surveys.id)
-            )
-        );
-      `)
-      .run();
-
-    console.warn(
-      `Removed ${deleted.changes} duplicate survey entr${deleted.changes === 1 ? 'y' : 'ies'} while migrating the schema; kept the most recently updated entry per user/project/date combination.`,
+  db.exec(`
+    BEGIN TRANSACTION;
+    ALTER TABLE surveys RENAME TO surveys_legacy;
+    CREATE TABLE surveys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      project_id INTEGER NOT NULL,
+      survey_date TEXT NOT NULL,
+      project_recommendation INTEGER,
+      project_improvement TEXT,
+      manager_effectiveness INTEGER,
+      manager_improvement TEXT,
+      team_comfort INTEGER,
+      team_improvement TEXT,
+      process_organization INTEGER,
+      process_obstacles TEXT,
+      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
+      improvement_ideas TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(project_id) REFERENCES projects(id),
+      UNIQUE(user_id, project_id, survey_date)
     );
-  }
-
-  const migrate = db.transaction(() => {
-    db.exec('ALTER TABLE surveys RENAME TO surveys_legacy;');
-
-    db.exec(`
-      CREATE TABLE surveys (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        project_id INTEGER NOT NULL,
-        survey_date TEXT NOT NULL,
-        project_recommendation INTEGER,
-        project_improvement TEXT,
-        manager_effectiveness INTEGER,
-        manager_improvement TEXT,
-        team_comfort INTEGER,
-        team_improvement TEXT,
-        process_organization INTEGER,
-        process_obstacles TEXT,
-        contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
-        improvement_ideas TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id),
-        FOREIGN KEY(project_id) REFERENCES projects(id)
-      );
-    `);
-
-    db.exec(`
-      INSERT INTO surveys (
-        id,
-        user_id,
-        project_id,
-        survey_date,
-        project_recommendation,
-        project_improvement,
-        manager_effectiveness,
-        manager_improvement,
-        team_comfort,
-        team_improvement,
-        process_organization,
-        process_obstacles,
-        contribution_valued,
-        improvement_ideas,
-        created_at,
-        updated_at
-      )
-      SELECT
-        id,
-        user_id,
-        project_id,
-        survey_date,
-        project_recommendation,
-        project_improvement,
-        manager_effectiveness,
-        manager_improvement,
-        team_comfort,
-        team_improvement,
-        process_organization,
-        process_obstacles,
-        contribution_valued,
-        improvement_ideas,
-        created_at,
-        updated_at
-      FROM surveys_legacy;
-    `);
-
-    db.exec('DROP TABLE surveys_legacy;');
-  });
-
-  migrate();
+    INSERT INTO surveys (
+      id,
+      user_id,
+      project_id,
+      survey_date,
+      project_recommendation,
+      project_improvement,
+      manager_effectiveness,
+      manager_improvement,
+      team_comfort,
+      team_improvement,
+      process_organization,
+      process_obstacles,
+      contribution_valued,
+      improvement_ideas,
+      created_at,
+      updated_at
+    )
+    SELECT
+      id,
+      user_id,
+      project_id,
+      survey_date,
+      project_recommendation,
+      project_improvement,
+      manager_effectiveness,
+      manager_improvement,
+      team_comfort,
+      team_improvement,
+      process_organization,
+      process_obstacles,
+      contribution_valued,
+      improvement_ideas,
+      created_at,
+      updated_at
+    FROM surveys_legacy;
+    DROP TABLE surveys_legacy;
+    COMMIT;
+  `);
 }
 
 type SurveyRow = {
@@ -163,7 +121,6 @@ export interface ProjectSummary {
   lastResponseAt: string | null;
 }
 
-
 export interface AdminProjectStats extends ProjectSummary {
   uniqueRespondents: number;
   averages: {
@@ -183,7 +140,6 @@ export interface AdminSurveyRecord extends SurveyRecord {
     username: string | null;
   };
 }
-
 
 export function initDB(): void {
   db.exec(`
@@ -228,10 +184,8 @@ export function initDB(): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id),
-
       FOREIGN KEY(project_id) REFERENCES projects(id),
       UNIQUE(user_id, project_id, survey_date)
-
     );
 
     CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
@@ -285,9 +239,7 @@ export function ensureUser(user: TelegramUser): void {
 function mapSurveyRow(row: SurveyRow): SurveyRecord {
   const createdAt = row.created_at;
   const updatedAt = row.updated_at;
-
   const editable = Date.now() - new Date(createdAt).getTime() <= ONE_DAY_MS;
-
 
   return {
     id: row.id,
@@ -307,9 +259,7 @@ function mapSurveyRow(row: SurveyRow): SurveyRecord {
     improvementIdeas: row.improvement_ideas ?? undefined,
     createdAt,
     updatedAt,
-
     canEdit: editable,
-
   };
 }
 
@@ -356,7 +306,7 @@ export function listProjects(search: string | undefined, limit: number): Project
   return rows;
 }
 
-export function createProject(name: string, createdBy?: number): ProjectSummary {
+export function createProject(name: string, userId: number): ProjectSummary {
   const existing = db
     .prepare('SELECT id, name, created_at as createdAt FROM projects WHERE LOWER(name) = LOWER(?)')
     .get(name) as { id: number; name: string; createdAt: string } | undefined;
@@ -387,7 +337,7 @@ export function createProject(name: string, createdBy?: number): ProjectSummary 
       `INSERT INTO projects (name, created_by, created_at)
        VALUES (?, ?, ?)`,
     )
-    .run(name.trim(), createdBy ?? null, now);
+    .run(name.trim(), userId, now);
 
   return {
     id: Number(result.lastInsertRowid),
@@ -396,99 +346,6 @@ export function createProject(name: string, createdBy?: number): ProjectSummary 
     responsesCount: 0,
     lastResponseAt: null,
   };
-}
-
-export function updateProjectName(id: number, name: string): ProjectSummary | undefined {
-  const existing = db
-    .prepare('SELECT id FROM projects WHERE id = ?')
-    .get(id) as { id: number } | undefined;
-
-  if (!existing) {
-    return undefined;
-  }
-
-  const trimmed = name.trim();
-  if (!trimmed) {
-    throw new Error('Название проекта не может быть пустым');
-  }
-
-  db.prepare('UPDATE projects SET name = ? WHERE id = ?').run(trimmed, id);
-
-  return listProjectsById(id);
-}
-
-function listProjectsById(id: number): ProjectSummary {
-  return db
-    .prepare(
-      `SELECT
-         p.id,
-         p.name,
-         p.created_at AS createdAt,
-         (
-           SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id
-         ) AS responsesCount,
-         (
-           SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id
-         ) AS lastResponseAt
-       FROM projects p
-       WHERE p.id = ?`,
-    )
-    .get(id) as ProjectSummary;
-}
-
-export function deleteProject(id: number): void {
-  const transaction = db.transaction(() => {
-    db.prepare('DELETE FROM surveys WHERE project_id = ?').run(id);
-    db.prepare('DELETE FROM projects WHERE id = ?').run(id);
-  });
-
-  transaction();
-}
-
-export function deleteSurvey(id: number): void {
-  db.prepare('DELETE FROM surveys WHERE id = ?').run(id);
-}
-
-export function updateSurveyAnswers(id: number, updates: SurveyAnswers): SurveyRecord | undefined {
-  const assignments: string[] = [];
-  const values: Array<string | number | null> = [];
-
-  (Object.entries(updates) as Array<[keyof SurveyAnswers, SurveyAnswers[keyof SurveyAnswers]]>).forEach(
-    ([key, value]) => {
-      const column = surveyFieldToColumn[key];
-      if (!column) {
-        return;
-      }
-
-      if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
-        assignments.push(`${column} = NULL`);
-        return;
-      }
-
-      assignments.push(`${column} = ?`);
-      values.push(value as never);
-    },
-  );
-
-  if (assignments.length > 0) {
-    const timestamp = new Date().toISOString();
-    assignments.push('updated_at = ?');
-    values.push(timestamp);
-    values.push(id);
-
-    db.prepare(`UPDATE surveys SET ${assignments.join(', ')} WHERE id = ?`).run(...values);
-  }
-
-  const row = db
-    .prepare(
-      `SELECT s.*, p.name AS project_name
-       FROM surveys s
-       JOIN projects p ON p.id = s.project_id
-       WHERE s.id = ?`,
-    )
-    .get(id) as SurveyRow | undefined;
-
-  return row ? mapSurveyRow(row) : undefined;
 }
 
 export function getSurveyById(id: number, userId: number): SurveyRecord | undefined {
@@ -544,9 +401,7 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
 
   const insert = db
     .prepare(
-
       `INSERT OR IGNORE INTO surveys (user_id, project_id, survey_date, created_at, updated_at)
-
        VALUES (?, ?, ?, ?, ?)`,
     )
     .run(userId, projectId, date, timestamp, timestamp);
@@ -556,11 +411,9 @@ export function createSurvey(userId: number, projectId: number, surveyDate?: str
       `SELECT s.*, p.name AS project_name
        FROM surveys s
        JOIN projects p ON p.id = s.project_id
-
        WHERE s.user_id = ? AND s.project_id = ? AND s.survey_date = ?`,
     )
     .get(userId, projectId, date) as SurveyRow | undefined;
-
 
   if (!row) {
     throw new Error('Failed to load survey after creation');
@@ -588,11 +441,9 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
     throw new Error('Survey not found');
   }
 
-
   if (!survey.canEdit) {
     throw new Error('Survey can no longer be edited');
   }
-
 
   const assignments: string[] = [];
   const values: Array<string | number | null> = [];
