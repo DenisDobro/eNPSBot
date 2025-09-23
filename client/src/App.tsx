@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import './App.css';
 import { createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
@@ -243,6 +243,20 @@ export default function App(): JSX.Element {
   const [surveyStarted, setSurveyStarted] = useState(false);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
 
+  const surveyStateRef = useRef({
+    started: false,
+    submitted: false,
+    currentId: null as number | null,
+  });
+
+  useEffect(() => {
+    surveyStateRef.current = {
+      started: surveyStarted,
+      submitted: surveySubmitted,
+      currentId: currentSurvey?.id ?? null,
+    };
+  }, [surveyStarted, surveySubmitted, currentSurvey]);
+
   const [creatingSurvey, setCreatingSurvey] = useState(false);
   const [savingSurvey, setSavingSurvey] = useState(false);
   const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
@@ -309,7 +323,8 @@ export default function App(): JSX.Element {
         return;
       }
 
-      if (surveyStarted && !surveySubmitted && currentSurvey?.projectId === projectId) {
+      const { started, submitted, currentId } = surveyStateRef.current;
+      if (started && !submitted && currentId !== null && currentSurvey?.projectId === projectId) {
         return;
       }
 
@@ -325,7 +340,7 @@ export default function App(): JSX.Element {
         setSurveysLoading(false);
       }
     },
-    [auth, currentSurvey, isAuthProvided, surveyStarted, surveySubmitted],
+    [auth, currentSurvey, isAuthProvided],
   );
 
   useEffect(() => {
@@ -354,16 +369,12 @@ export default function App(): JSX.Element {
       return;
     }
 
-    if (surveyStarted && !surveySubmitted) {
-      return;
-    }
-
     const intervalId = window.setInterval(() => {
       void refreshSurveys(selectedProjectId);
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [isAuthProvided, refreshSurveys, selectedProjectId, surveyStarted, surveySubmitted]);
+  }, [isAuthProvided, refreshSurveys, selectedProjectId]);
 
   useEffect(() => {
     if (view === 'history' && selectedProjectId) {
@@ -402,6 +413,11 @@ export default function App(): JSX.Element {
       setSurveyStarted(true);
       setSurveySubmitted(false);
       setEditingSurveyId(null);
+      surveyStateRef.current = {
+        started: true,
+        submitted: false,
+        currentId: response.record.id,
+      };
     } catch (error) {
       showError(error);
     } finally {
@@ -444,6 +460,8 @@ export default function App(): JSX.Element {
     try {
       const response = await updateSurveyRequest(auth, currentSurvey.id, payload);
       setSurveySubmitted(true);
+      surveyStateRef.current.submitted = true;
+      surveyStateRef.current.currentId = response.survey.id;
       setCurrentSurvey(response.survey);
       setDraftAnswers(normalizeAnswersFromSurvey(response.survey));
 
@@ -468,6 +486,7 @@ export default function App(): JSX.Element {
     setEditingSurveyId(null);
     setMenuOpen(false);
     setView('history');
+    surveyStateRef.current = { started: false, submitted: false, currentId: null };
   }, []);
 
   const submitSurveyDraft = useCallback(
