@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import type { ContributionValue, SurveyAnswers, SurveyRecord } from '../types';
 
 export type QuestionKey = keyof SurveyAnswers;
@@ -22,6 +24,8 @@ interface SurveyStepperProps {
   isSaving: boolean;
   onExit: () => void;
 }
+const SCALE_VALUES = Array.from({ length: 11 }, (_, index) => index);
+
 
 export function SurveyStepper({
   survey,
@@ -41,51 +45,74 @@ export function SurveyStepper({
 
   useEffect(() => {
     if (!question) {
+
+      setCurrentValue(undefined);
+      setError(null);
+
       return;
     }
 
     const answerValue = answers[question.key];
 
-    if (question.type === 'text') {
-      setCurrentValue(typeof answerValue === 'string' ? answerValue : '');
-    } else {
-      setCurrentValue(typeof answerValue === 'number' ? answerValue : answerValue);
-    }
+    const preparedValue =
+      typeof answerValue === 'number' || typeof answerValue === 'string'
+        ? answerValue
+        : question.type === 'text'
+        ? ''
+        : undefined;
 
+    setCurrentValue(preparedValue);
     setError(null);
-  }, [question, answers]);
+  }, [answers, question]);
 
-  const handleScaleSelect = async (value: number) => {
-    if (!question || question.type !== 'scale') {
-      return;
-    }
+  const completionDeadline = useMemo(() => {
+    const createdAt = new Date(survey.createdAt);
+    const deadline = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+    return deadline.toLocaleString();
+  }, [survey.createdAt]);
 
-    setError(null);
-    setCurrentValue(value);
-    try {
-      await onSubmitAnswer(question.key, value);
-      onStepChange(activeStep + 1);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
+  const commitAnswer = useCallback(
+    async (value: number | string) => {
+      if (!question || isSaving) {
+        return;
+      }
 
-  const handleOptionSelect = async (value: ContributionValue) => {
-    if (!question || question.type !== 'options') {
-      return;
-    }
+      setError(null);
+      setCurrentValue(value);
+      try {
+        await onSubmitAnswer(question.key, value);
+        onStepChange(activeStep + 1);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    },
+    [activeStep, isSaving, onStepChange, onSubmitAnswer, question],
+  );
 
-    setError(null);
-    setCurrentValue(value);
-    try {
-      await onSubmitAnswer(question.key, value);
-      onStepChange(activeStep + 1);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
+  const handleScaleSelect = useCallback(
+    async (value: number) => {
+      if (!question || question.type !== 'scale') {
+        return;
+      }
 
-  const handleTextSubmit = async () => {
+      await commitAnswer(value);
+    },
+    [commitAnswer, question],
+  );
+
+  const handleOptionSelect = useCallback(
+    async (value: ContributionValue) => {
+      if (!question || question.type !== 'options') {
+        return;
+      }
+
+      await commitAnswer(value);
+    },
+    [commitAnswer, question],
+  );
+
+  const handleTextSubmit = useCallback(async () => {
+
     if (!question || question.type !== 'text') {
       return;
     }
@@ -96,16 +123,17 @@ export function SurveyStepper({
       return;
     }
 
-    setError(null);
-    try {
-      await onSubmitAnswer(question.key, value);
-      onStepChange(activeStep + 1);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
+    await commitAnswer(value);
+  }, [commitAnswer, currentValue, question]);
 
-  const progress = Math.min((activeStep / questions.length) * 100, 100);
+  const progress = useMemo(() => {
+    if (!questions.length) {
+      return 0;
+    }
+
+    return Math.min((activeStep / questions.length) * 100, 100);
+  }, [activeStep, questions.length]);
+
 
   if (isCompleted) {
     return (
@@ -114,7 +142,9 @@ export function SurveyStepper({
           <div>
             <h2>Спасибо! Анкета сохранена</h2>
             <p className="panel-subtitle">
-              Вы всегда можете вернуться и обновить ответы в любое время.
+
+              Вы всегда можете вернуться и отредактировать ответы до {completionDeadline}.
+
             </p>
           </div>
         </header>
@@ -153,14 +183,20 @@ export function SurveyStepper({
           {question.description && <p className="question-description">{question.description}</p>}
           {question.type === 'scale' && (
             <div className="scale-selector">
-              {Array.from({ length: 11 }, (_, index) => index).map((score) => {
+
+              {SCALE_VALUES.map((score) => {
+
                 const isActive = currentValue === score;
                 return (
                   <button
                     key={score}
                     type="button"
                     className={`scale-selector__item ${isActive ? 'scale-selector__item--active' : ''}`}
-                    onClick={() => handleScaleSelect(score)}
+
+                    onClick={() => {
+                      void handleScaleSelect(score);
+                    }}
+
                     disabled={isSaving}
                   >
                     {score}
@@ -209,7 +245,11 @@ export function SurveyStepper({
                     key={option.value}
                     type="button"
                     className={`option-chip ${isActive ? 'option-chip--active' : ''}`}
-                    onClick={() => handleOptionSelect(option.value)}
+
+                    onClick={() => {
+                      void handleOptionSelect(option.value);
+                    }}
+
                     disabled={isSaving}
                   >
                     {option.label}
@@ -233,7 +273,9 @@ export function SurveyStepper({
             <span className="hint">Выберите ответ, чтобы перейти далее.</span>
           </div>
         )}
-        <p className="deadline-hint">Ответы можно редактировать в любой момент — изменения сохранятся сразу.</p>
+
+        <p className="deadline-hint">Можно редактировать ответы до {completionDeadline}</p>
+
       </div>
     </section>
   );

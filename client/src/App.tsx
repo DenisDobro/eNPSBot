@@ -18,6 +18,9 @@ import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from '
 
 type AppMode = 'user' | 'admin';
 
+type ThemeMode = 'light' | 'dark';
+
+
 function getInitialMode(): AppMode {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -27,11 +30,98 @@ function getInitialMode(): AppMode {
   }
 }
 
-const METALAMP_COLORS = {
-  accent: '#6C38FF',
-  dark: '#321D73',
-  background: '#130835',
+
+const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
+  dark: { background: '#080F2B', header: '#101940' },
+  light: { background: '#F6F7FB', header: '#FFFFFF' },
 };
+
+function createFallbackUser(): TelegramUser {
+  return {
+    id: 1,
+    first_name: 'Metallamp',
+    last_name: 'Team',
+    username: 'metallamp',
+  };
+}
+
+function useMetalampTheme(): ThemeMode {
+  const [theme, setTheme] = useState<ThemeMode>('dark');
+
+  useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+    const resolveTheme = (): ThemeMode => {
+      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
+        return webApp.colorScheme;
+      }
+
+      return mediaQuery?.matches ? 'dark' : 'light';
+    };
+
+    const applyTheme = (mode: ThemeMode) => {
+      setTheme(mode);
+      if (typeof document !== 'undefined') {
+        document.body.dataset.theme = mode;
+        document.documentElement.style.setProperty('color-scheme', mode);
+      }
+    };
+
+    applyTheme(resolveTheme());
+
+    const handleTelegramTheme = () => {
+      applyTheme(resolveTheme());
+    };
+
+    const handleSystemTheme = (event: MediaQueryListEvent) => {
+      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
+        return;
+      }
+
+      applyTheme(event.matches ? 'dark' : 'light');
+    };
+
+    if (webApp?.onEvent) {
+      webApp.onEvent('themeChanged', handleTelegramTheme);
+    }
+
+    if (mediaQuery) {
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleSystemTheme);
+      } else {
+        mediaQuery.addListener(handleSystemTheme);
+      }
+    }
+
+    return () => {
+      if (webApp?.offEvent) {
+        webApp.offEvent('themeChanged', handleTelegramTheme);
+      }
+
+      if (mediaQuery) {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener('change', handleSystemTheme);
+        } else {
+          mediaQuery.removeListener(handleSystemTheme);
+        }
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) {
+      return;
+    }
+
+    const palette = TELEGRAM_THEME_COLORS[theme];
+    webApp.setBackgroundColor?.(palette.background);
+    webApp.setHeaderColor?.(palette.header);
+  }, [theme]);
+
+  return theme;
+}
 
 const QUESTION_CONFIG: QuestionConfig[] = [
   {
@@ -139,15 +229,17 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
     if (webApp) {
       webApp.ready();
       webApp.expand?.();
-      webApp.setHeaderColor?.(METALAMP_COLORS.dark);
-      webApp.setBackgroundColor?.(METALAMP_COLORS.background);
+
 
       const initData = webApp.initData && webApp.initData.length > 0 ? webApp.initData : null;
       setAuth({ initDataRaw: initData, debugUser: null });
       setUser(webApp.initDataUnsafe?.user ?? null);
     } else {
-      setAuth({ initDataRaw: null, debugUser: null });
-      setUser(null);
+
+      const fallback = createFallbackUser();
+      setAuth({ initDataRaw: null, debugUser: fallback });
+      setUser(fallback);
+
     }
 
     setReady(true);
@@ -157,6 +249,9 @@ function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; r
 }
 
 export default function App() {
+
+  useMetalampTheme();
+
   const { auth, user, ready } = useTelegramUser();
   const [projectSearch, setProjectSearch] = useState('');
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -196,6 +291,9 @@ export default function App() {
       const timeoutId = window.setTimeout(() => setBanner(null), 3000);
       return () => window.clearTimeout(timeoutId);
     }
+
+    return undefined;
+
   }, [banner]);
 
   const selectedProject = useMemo(
@@ -505,7 +603,9 @@ export default function App() {
       <div>
         <h1 className="app-title">Метрика атмосферы</h1>
         <p className="app-subtitle">
-          Сбор внутреннего NPS помогает проектному офису понимать настроение команды в каждом спринте.
+
+          Сбор внутреннего NPS помогает нам понимать настроение команды в каждом спринте.
+
         </p>
       </div>
       <div className="header-actions">
@@ -530,7 +630,11 @@ export default function App() {
         {user && (
           <div className="user-card">
             <span className="user-card__hello">Привет, {user.first_name}!</span>
-            <span className="user-card__hint">Ответы видны только вам и проектному офису Металампа.</span>
+
+            <span className="user-card__hint">
+              Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
+            </span>
+
           </div>
         )}
       </div>
@@ -605,7 +709,9 @@ export default function App() {
                 <header className="panel-header">
                   <div>
                     <h2>Выберите проект</h2>
-                    <p className="panel-subtitle">Для начала заполнения анкеты выберите проект слева.</p>
+
+                    <p className="panel-subtitle">Выберите, пожалуйста, проект и начните заполнять анкету.</p>
+
                   </div>
                 </header>
               </section>
@@ -652,6 +758,9 @@ export default function App() {
                 onCancelEdit={handleCancelEdit}
                 onSubmitDraft={handleInlineSubmit}
                 isSaving={savingAnswer}
+
+                projectName={selectedProject.name}
+
               />
             )}
           </div>

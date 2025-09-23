@@ -11,6 +11,9 @@ interface ResponsesListProps {
   onCancelEdit: () => void;
   onSubmitDraft: (surveyId: number, updates: SurveyAnswers) => Promise<void>;
   isSaving: boolean;
+
+  projectName?: string;
+
 }
 
 function formatDate(date: string): string {
@@ -30,6 +33,29 @@ function RatingRow({ label, value }: { label: string; value?: number }) {
   );
 }
 
+
+type RatingKey = 'projectRecommendation' | 'managerEffectiveness' | 'teamComfort' | 'processOrganization';
+
+type RatingField = { key: RatingKey; label: string };
+
+const RATING_FIELDS: RatingField[] = [
+  { key: 'projectRecommendation', label: 'Проект' },
+  { key: 'managerEffectiveness', label: 'Менеджер' },
+  { key: 'teamComfort', label: 'Команда' },
+  { key: 'processOrganization', label: 'Процессы' },
+];
+
+function calculateAverage(values: Array<number | undefined>): number | null {
+  const filtered = values.filter((value): value is number => typeof value === 'number');
+  if (!filtered.length) {
+    return null;
+  }
+
+  const total = filtered.reduce((sum, value) => sum + value, 0);
+  return total / filtered.length;
+}
+
+
 export function ResponsesList({
   surveys,
   onEdit,
@@ -39,16 +65,81 @@ export function ResponsesList({
   onCancelEdit,
   onSubmitDraft,
   isSaving,
+
+  projectName,
 }: ResponsesListProps) {
+  const ratingStats = RATING_FIELDS.map((field) => ({
+    ...field,
+    average: calculateAverage(surveys.map((survey) => survey[field.key])),
+  })).filter((stat): stat is RatingField & { average: number } => stat.average !== null);
+
+  const contributionStats = surveys.reduce(
+    (acc, survey) => {
+      if (survey.contributionValued) {
+        acc[survey.contributionValued] += 1;
+      }
+      return acc;
+    },
+    { yes: 0, partial: 0, no: 0 },
+  );
+
+  const totalContributionResponses = contributionStats.yes + contributionStats.partial + contributionStats.no;
+
+
   return (
     <section className="panel">
       <header className="panel-header">
         <div>
           <h2>История ответов</h2>
-          <p className="panel-subtitle">Видны только ваши ответы. Мы сохраняем каждую запись с датой.</p>
+
+          <p className="panel-subtitle">
+            Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
+          </p>
+          {projectName && <p className="panel-meta">Проект: {projectName}</p>}
         </div>
       </header>
       <div className="panel-body responses-list">
+        {surveys.length > 0 && (
+          <div className="responses-insights">
+            <div className="responses-insights__section">
+              <h3>Средние оценки</h3>
+              {ratingStats.length > 0 ? (
+                <div className="responses-insights__grid">
+                  {ratingStats.map((stat) => (
+                    <div key={stat.key} className="responses-insights__card">
+                      <span className="responses-insights__label">{stat.label}</span>
+                      <span className="responses-insights__value">{stat.average.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="hint">Пока нет оценок по шкале.</p>
+              )}
+            </div>
+            <div className="responses-insights__section">
+              <h3>Оценка ценности вклада</h3>
+              {totalContributionResponses > 0 ? (
+                <ul className="responses-insights__distribution">
+                  <li>
+                    <span className="responses-insights__chip">Да</span>
+                    <span className="responses-insights__count">{contributionStats.yes}</span>
+                  </li>
+                  <li>
+                    <span className="responses-insights__chip">Частично</span>
+                    <span className="responses-insights__count">{contributionStats.partial}</span>
+                  </li>
+                  <li>
+                    <span className="responses-insights__chip">Нет</span>
+                    <span className="responses-insights__count">{contributionStats.no}</span>
+                  </li>
+                </ul>
+              ) : (
+                <p className="hint">Ответов на вопрос про вклад пока нет.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {isLoading && <div className="hint">Загружаем историю…</div>}
         {!isLoading && surveys.length === 0 && <div className="hint">Пока нет заполненных анкет.</div>}
         {surveys.map((survey) => {
@@ -72,6 +163,9 @@ export function ResponsesList({
                     <span className="response-card__meta">Обновлено: {updated}</span>
                   </header>
                   <div className="response-card__content">
+
+                    <span className="response-card__project">{survey.projectName}</span>
+
                     <div className="response-card__ratings">
                       <RatingRow label="Проект" value={survey.projectRecommendation} />
                       <RatingRow label="Менеджер" value={survey.managerEffectiveness} />

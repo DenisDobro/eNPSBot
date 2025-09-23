@@ -1,37 +1,131 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
 
 :root {
-  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark light;
-  color: #f5f6ff;
-  background-color: #07041c;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --metalamp-primary: #6c38ff;
-  --metalamp-primary-dark: #4322c5;
-  --metalamp-secondary: #22e4fd;
-  --metalamp-surface: rgba(21, 12, 52, 0.92);
-  --metalamp-surface-muted: rgba(30, 19, 70, 0.72);
-  --metalamp-gradient: linear-gradient(135deg, #0c0629 0%, #1c0f49 45%, #052039 100%);
-  --metalamp-gradient-soft: linear-gradient(135deg, rgba(108, 56, 255, 0.08) 0%, rgba(34, 228, 253, 0.12) 100%);
-  --panel-background: rgba(24, 17, 56, 0.92);
-  --panel-shadow: 0 24px 48px rgba(6, 2, 24, 0.35);
-  --panel-border: 1px solid rgba(255, 255, 255, 0.08);
-  --border-radius: 20px;
-}
 
-* {
-  box-sizing: border-box;
+  color-scheme: light dark;
+  --brand-navy: #080f2b;
+  --brand-navy-strong: #040a1f;
+  --brand-navy-soft: #132247;
+  --brand-sky: #90a2e3;
+  --brand-orange: #ffa300;
+  --brand-orange-strong: #ff8a42;
+  --accent-color: var(--brand-orange);
+  --accent-color-alt: var(--brand-orange-strong);
+  --accent-gradient: linear-gradient(130deg, var(--brand-orange) 0%, var(--brand-orange-strong) 100%);
+  --border-radius-lg: 24px;
+  --app-solid-background: var(--brand-navy-strong);
+  --app-gradient: radial-gradient(circle at 18% 6%, rgba(255, 163, 0, 0.26), transparent 56%),
+    radial-gradient(circle at 82% 0%, rgba(144, 162, 227, 0.18), transparent 62%),
+    linear-gradient(150deg, var(--brand-navy-strong) 0%, #0f1c3f 42%, var(--brand-navy-strong) 100%);
+  --panel-background: rgba(12, 20, 48, 0.88);
+  --panel-border: rgba(255, 255, 255, 0.06);
+  --panel-shadow: 0 28px 80px rgba(4, 8, 31, 0.55);
+  --text-primary: #f5f7ff;
+  --text-secondary: #bcc3e1;
+  --text-muted: #8f96b8;
+  --glass-background: rgba(15, 23, 56, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --button-text-color: #080f2b;
+  --button-shadow: 0 18px 36px rgba(255, 163, 0, 0.24);
+  --button-hover-shadow: 0 26px 52px rgba(255, 138, 66, 0.28);
+  --input-background: rgba(6, 12, 34, 0.78);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --input-placeholder: rgba(188, 195, 225, 0.7);
+  --input-focus-shadow: 0 0 0 3px rgba(255, 163, 0, 0.24);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-border-hover: rgba(255, 163, 0, 0.32);
+  --card-active-border: rgba(255, 138, 66, 0.52);
+  --card-shadow-hover: 0 18px 44px rgba(4, 8, 31, 0.5);
+  --card-active-shadow: 0 26px 52px rgba(255, 163, 0, 0.24);
+  --surface-card: rgba(15, 23, 56, 0.82);
+  --surface-card-hover: rgba(19, 30, 68, 0.92);
+  --surface-card-active: rgba(23, 35, 78, 0.95);
+  --chip-background: rgba(255, 255, 255, 0.1);
+  --chip-border: rgba(255, 255, 255, 0.2);
+  --chip-text: #f2f4ff;
+  --chip-background-active: linear-gradient(125deg, var(--brand-orange) 0%, var(--brand-orange-strong) 100%);
+  --chip-text-active: #080f2b;
+  --progress-track: rgba(255, 255, 255, 0.16);
+  --progress-fill: linear-gradient(90deg, var(--brand-orange-strong) 0%, var(--brand-orange) 100%);
+  --banner-error-bg: rgba(255, 93, 97, 0.16);
+  --banner-error-border: rgba(255, 93, 97, 0.42);
+  --banner-error-text: #ffb5bd;
+  --success-bg: rgba(46, 213, 126, 0.14);
+  --success-text: #41d98c;
+  --danger-text: #ff9b7b;
+  --divider: rgba(255, 255, 255, 0.08);
+
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--metalamp-gradient);
+
+  background: var(--app-solid-background);
+  color: var(--text-primary);
+  transition: background 0.45s ease, color 0.45s ease;
+}
+
+body[data-theme='dark'] {
+  background: var(--app-solid-background);
+}
+
+body[data-theme='light'] {
+  --app-solid-background: #f6f7fb;
+  --app-gradient: radial-gradient(circle at 12% -8%, rgba(255, 163, 0, 0.22), transparent 55%),
+    radial-gradient(circle at 88% -12%, rgba(144, 162, 227, 0.2), transparent 62%),
+    linear-gradient(150deg, #ffffff 0%, #f7f8ff 45%, #eef4ff 100%);
+  --panel-background: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(8, 15, 43, 0.08);
+  --panel-shadow: 0 22px 64px rgba(8, 15, 43, 0.08);
+  --text-primary: #080f2b;
+  --text-secondary: #52576b;
+  --text-muted: #7d84a4;
+  --glass-background: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(8, 15, 43, 0.08);
+  --button-text-color: #ffffff;
+  --button-shadow: 0 18px 36px rgba(255, 163, 0, 0.18);
+  --button-hover-shadow: 0 26px 52px rgba(255, 138, 66, 0.22);
+  --input-background: rgba(255, 255, 255, 0.96);
+  --input-border: rgba(8, 15, 43, 0.12);
+  --input-placeholder: rgba(113, 120, 156, 0.6);
+  --input-focus-shadow: 0 0 0 3px rgba(255, 163, 0, 0.22);
+  --card-border: rgba(8, 15, 43, 0.08);
+  --card-border-hover: rgba(255, 163, 0, 0.28);
+  --card-active-border: rgba(255, 138, 66, 0.44);
+  --card-shadow-hover: 0 16px 36px rgba(8, 15, 43, 0.08);
+  --card-active-shadow: 0 22px 48px rgba(255, 163, 0, 0.18);
+  --surface-card: rgba(255, 255, 255, 0.97);
+  --surface-card-hover: rgba(255, 255, 255, 1);
+  --surface-card-active: rgba(255, 255, 255, 1);
+  --chip-background: rgba(255, 163, 0, 0.12);
+  --chip-border: rgba(255, 163, 0, 0.28);
+  --chip-text: var(--brand-orange);
+  --chip-background-active: linear-gradient(125deg, var(--brand-orange) 0%, var(--brand-orange-strong) 100%);
+  --chip-text-active: #080f2b;
+  --progress-track: rgba(8, 15, 43, 0.12);
+  --progress-fill: linear-gradient(90deg, var(--brand-orange) 0%, var(--brand-orange-strong) 100%);
+  --banner-error-bg: rgba(255, 93, 97, 0.12);
+  --banner-error-border: rgba(255, 93, 97, 0.32);
+  --banner-error-text: #c12837;
+  --success-bg: rgba(46, 213, 126, 0.14);
+  --success-text: #0d8157;
+  --danger-text: #d14a38;
+  --divider: rgba(8, 15, 43, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+
 }
 
 a {
