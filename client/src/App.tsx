@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { createProject, createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
@@ -323,13 +323,20 @@ export default function App() {
     setActiveStep(findNextStep(currentSurvey));
   }, [currentSurvey]);
 
-  const handleAddProject = async (name: string) => {
-    const response = await createProject(auth, name);
-    setProjects((prev) => [response.project, ...prev.filter((project) => project.id !== response.project.id)]);
-    setSelectedProjectId(response.project.id);
-  };
+  const handleAddProject = useCallback(
+    async (name: string) => {
+      const response = await createProject(auth, name);
+      setProjects((prev) => [response.project, ...prev.filter((project) => project.id !== response.project.id)]);
+      setSelectedProjectId(response.project.id);
+    },
+    [auth],
+  );
 
-  const handleCreateSurvey = async () => {
+  const handleSelectProject = useCallback((project: ProjectSummary) => {
+    setSelectedProjectId(project.id);
+  }, []);
+
+  const handleCreateSurvey = useCallback(async () => {
     if (!selectedProject) {
       return;
     }
@@ -355,39 +362,45 @@ export default function App() {
     } finally {
       setCreatingSurvey(false);
     }
-  };
+  }, [auth, selectedProject]);
 
-  const handleSurveyAnswer = async (key: QuestionKey, value: number | string) => {
-    if (!currentSurvey) {
-      throw new Error('Анкета не найдена');
-    }
+  const handleSurveyAnswer = useCallback(
+    async (key: QuestionKey, value: number | string) => {
+      if (!currentSurvey) {
+        throw new Error('Анкета не найдена');
+      }
 
-    setSavingAnswer(true);
-    setBannerError(null);
-    try {
-      const payload = { [key]: value } as SurveyAnswers;
-      const response = await updateSurveyRequest(auth, currentSurvey.id, payload);
-      setCurrentSurvey(response.survey);
-      setSurveys((prev) => prev.map((survey) => (survey.id === response.survey.id ? response.survey : survey)));
-    } finally {
-      setSavingAnswer(false);
-    }
-  };
+      setSavingAnswer(true);
+      setBannerError(null);
+      try {
+        const payload = { [key]: value } as SurveyAnswers;
+        const response = await updateSurveyRequest(auth, currentSurvey.id, payload);
+        setCurrentSurvey(response.survey);
+        setSurveys((prev) => prev.map((survey) => (survey.id === response.survey.id ? response.survey : survey)));
+      } finally {
+        setSavingAnswer(false);
+      }
+    },
+    [auth, currentSurvey],
+  );
 
-  const handleEditSurvey = (survey: SurveyRecord) => {
-    if (!survey.canEdit) {
-      setBannerError('Редактирование больше недоступно.');
-      return;
-    }
+  const handleEditSurvey = useCallback(
+    (survey: SurveyRecord) => {
+      if (!survey.canEdit) {
+        setBannerError('Редактирование больше недоступно.');
+        return;
+      }
 
-    setCurrentSurvey(survey);
-    setActiveStep(findNextStep(survey));
-  };
+      setCurrentSurvey(survey);
+      setActiveStep(findNextStep(survey));
+    },
+    [],
+  );
 
-  const handleCloseSurvey = () => {
+  const handleCloseSurvey = useCallback(() => {
     setCurrentSurvey(null);
     setActiveStep(0);
-  };
+  }, []);
 
   return (
     <div className="app">
@@ -416,7 +429,7 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             search={projectSearch}
             onSearchChange={setProjectSearch}
-            onSelect={(project) => setSelectedProjectId(project.id)}
+            onSelect={handleSelectProject}
             onAddProject={handleAddProject}
             isLoading={projectsLoading}
             error={projectsError}
