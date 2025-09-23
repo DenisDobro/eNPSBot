@@ -5,3 +5,7 @@ client/dist/
 .env
 npm-debug.log*
 .DS_Store
+.npm-cache/
+data/
+.vscode/
+.logs/

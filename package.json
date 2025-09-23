@@ -5,13 +5,15 @@
   "main": "build/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run client:dev\"",
     "build": "npm run build:server && npm run build:client",
     "build:server": "tsc -p tsconfig.json",
     "build:client": "npm run build --prefix client",
     "start": "node build/index.js",
+    "launch": "npm run build && npm start",
     "lint": "tsc --noEmit",
     "client:dev": "npm run dev --prefix client",
-    "client:build": "npm run build:client",
+    "client:build": "npm run build --prefix client",
     "client:lint": "npm run lint --prefix client",
     "build:all": "npm run build"
   },
@@ -35,6 +37,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.5.2",
+    "concurrently": "^9.2.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
   }

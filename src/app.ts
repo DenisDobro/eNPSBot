@@ -2,10 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { telegramAuth } from './middleware/auth';
-import featureFlagsRouter from './features/feature-flags/featureFlags.router';
-import projectsRouter from './features/projects/projects.router';
-import surveysRouter from './features/surveys/surveys.router';
+import projectsRouter from './routes/projects';
+import surveysRouter from './routes/surveys';
 import { config } from './config';
+import adminRouter from './routes/admin';
 
 export function createApp(): express.Express {
   const app = express();
@@ -21,9 +21,9 @@ export function createApp(): express.Express {
     res.json({ status: 'ok' });
   });
 
+  app.use('/api/admin', adminRouter);
   const apiRouter = express.Router();
   apiRouter.use(telegramAuth);
-  apiRouter.use('/feature-flags', featureFlagsRouter);
   apiRouter.use('/projects', projectsRouter);
   apiRouter.use('/surveys', surveysRouter);
 

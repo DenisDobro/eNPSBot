@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { TelegramUser } from './shared/telegram.types';
+import { TelegramUser } from './types';
 
 export interface TelegramAuthPayload {
   user: TelegramUser;
@@ -22,9 +22,9 @@ export function validateTelegramInitData(
   botToken: string,
 ): TelegramAuthPayload {
   const parsed = parseTelegramInitData(rawData);
-  const hash = parsed.hash;
+  const hashHex = parsed.hash;
 
-  if (!hash) {
+  if (!hashHex) {
     throw new Error('Missing hash in init data');
   }
 
@@ -35,10 +35,25 @@ export function validateTelegramInitData(
   }
 
   const dataCheckString = dataCheckArr.join('\n');
-  const secret = crypto.createHash('sha256').update(botToken).digest();
-  const hmac = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+  const hashBuffer = Buffer.from(hashHex, 'hex');
 
-  if (hmac !== hash) {
+  const calculateSignature = (secret: Buffer): Buffer =>
+    crypto.createHmac('sha256', secret).update(dataCheckString).digest();
+
+  const webAppSecret = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+  const legacySecret = crypto.createHash('sha256').update(botToken).digest();
+
+  const signatures = [calculateSignature(webAppSecret), calculateSignature(legacySecret)];
+
+  const isValidSignature = signatures.some((signature) => {
+    if (signature.length !== hashBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(signature, hashBuffer);
+  });
+
+  if (!isValidSignature) {
     throw new Error('Invalid init data hash');
   }
 

@@ -1,4 +1,4 @@
-import type { TelegramUser } from './shared/types/api';
+import type { TelegramUser } from './types';
 
 declare global {
   interface Window {
@@ -15,6 +15,7 @@ declare global {
         setHeaderColor?: (color: string) => void;
         onEvent?: (eventType: string, handler: () => void) => void;
         offEvent?: (eventType: string, handler: () => void) => void;
+        openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
       };
     };
   }
