@@ -1,10 +1,82 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import './App.css';
 import './AdminApp.css';
-import { fetchAdminDebugToken, fetchAdminProjectResponses, fetchAdminProjects, sanitizeAdminToken } from './api';
-import type { AdminProjectStats, AdminSurveyRecord } from './types';
+import {
+  createAdminProject,
+  deleteAdminProject,
+  deleteAdminSurvey,
+  fetchAdminDebugToken,
+  fetchAdminProjectResponses,
+  fetchAdminProjects,
+  sanitizeAdminToken,
+  updateAdminProjectName,
+  updateAdminSurvey,
+} from './api';
+import type { AdminProjectStats, AdminSurveyRecord, SurveyAnswers } from './types';
+import SurveyInlineEditor from './components/SurveyInlineEditor';
+import type { QuestionConfig } from './components/SurveyStepper';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+const ADMIN_QUESTION_CONFIG: QuestionConfig[] = [
+  {
+    key: 'projectRecommendation',
+    title: 'Насколько вероятно, что вы порекомендуете участие в проекте коллеге?',
+    description: '0 — точно нет, 10 — однозначно да.',
+    type: 'scale',
+  },
+  {
+    key: 'projectImprovement',
+    title: 'Что могло бы повысить оценку проекта?',
+    type: 'text',
+  },
+  {
+    key: 'managerEffectiveness',
+    title: 'Насколько эффективно менеджер помогает снимать блокеры?',
+    description: '0 — никак не помогает, 10 — помогает всегда и быстро.',
+    type: 'scale',
+  },
+  {
+    key: 'managerImprovement',
+    title: 'Что менеджер мог бы улучшить?',
+    type: 'text',
+  },
+  {
+    key: 'teamComfort',
+    title: 'Насколько комфортно работать с командой?',
+    type: 'scale',
+  },
+  {
+    key: 'teamImprovement',
+    title: 'Что можно улучшить в командной работе?',
+    type: 'text',
+  },
+  {
+    key: 'processOrganization',
+    title: 'Насколько хорошо организованы процессы?',
+    type: 'scale',
+  },
+  {
+    key: 'processObstacles',
+    title: 'Что мешало работать эффективнее?',
+    type: 'text',
+  },
+  {
+    key: 'contributionValued',
+    title: 'Чувствует ли сотрудник, что его вклад ценится?',
+    type: 'options',
+    options: [
+      { label: 'Да', value: 'yes' },
+      { label: 'Частично', value: 'partial' },
+      { label: 'Нет', value: 'no' },
+    ],
+  },
+  {
+    key: 'improvementIdeas',
+    title: 'Какие есть идеи для улучшения?',
+    type: 'text',
+  },
+];
 
 interface ResponseGroup {
   id: string;
@@ -155,6 +227,12 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
   const [responsesLoading, setResponsesLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [responsesError, setResponsesError] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
+  const [projectActionId, setProjectActionId] = useState<number | null>(null);
+  const [editingResponseId, setEditingResponseId] = useState<number | null>(null);
+  const [responseActionId, setResponseActionId] = useState<number | null>(null);
   const debugTokenAttemptedRef = useRef(false);
 
   const selectedProject = useMemo(
@@ -199,6 +277,62 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
       window.open(link, '_blank', 'noopener');
     }
   }, [token]);
+
+  const refreshProjectsList = useCallback(
+    async (preserveSelection = false) => {
+      if (!token) {
+        return;
+      }
+
+      setProjectsLoading(true);
+      setProjectsError(null);
+
+      try {
+        const data = await fetchAdminProjects(token);
+        setProjects(data.projects);
+        setSelectedProjectId((current) => {
+          if (preserveSelection && current && data.projects.some((project) => project.id === current)) {
+            return current;
+          }
+
+          return data.projects[0]?.id ?? null;
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setProjectsError(message);
+
+        if (typeof error === 'object' && error && 'status' in error && (error as { status?: number }).status === 401) {
+          debugTokenAttemptedRef.current = false;
+          setToken(null);
+          setTokenInput('');
+        }
+      } finally {
+        setProjectsLoading(false);
+      }
+    },
+    [token],
+  );
+
+  const loadProjectResponses = useCallback(
+    async (projectId: number) => {
+      if (!token) {
+        return;
+      }
+
+      setResponsesLoading(true);
+      setResponsesError(null);
+
+      try {
+        const data = await fetchAdminProjectResponses(token, projectId);
+        setResponses(data.surveys);
+      } catch (error) {
+        setResponsesError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setResponsesLoading(false);
+      }
+    },
+    [token],
+  );
 
   const handleTokenSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -266,53 +400,19 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
     }
 
     let cancelled = false;
-    setProjectsLoading(true);
-    setProjectsError(null);
 
-    fetchAdminProjects(token)
-      .then((data) => {
-        if (cancelled) {
-          return;
-        }
+    const load = async () => {
+      await refreshProjectsList();
+    };
 
-        setProjects(data.projects);
-        if (data.projects.length > 0) {
-          setSelectedProjectId((current) => {
-            if (current && data.projects.some((project) => project.id === current)) {
-              return current;
-            }
-
-            return data.projects[0].id;
-          });
-        } else {
-          setSelectedProjectId(null);
-        }
-
-      })
-      .catch((error: Error & { status?: number }) => {
-        if (cancelled) {
-          return;
-        }
-
-        const message = error.message || 'Не удалось загрузить статистику проектов';
-        setProjectsError(message);
-
-        if (error.status === 401) {
-          debugTokenAttemptedRef.current = false;
-          setToken(null);
-          setTokenInput('');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setProjectsLoading(false);
-        }
-      });
+    if (!cancelled) {
+      void load();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [refreshProjectsList, token]);
 
   useEffect(() => {
     if (!token || !selectedProjectId) {
@@ -321,31 +421,8 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
       return;
     }
 
-    let cancelled = false;
-    setResponsesLoading(true);
-    setResponsesError(null);
-
-    fetchAdminProjectResponses(token, selectedProjectId)
-      .then((data) => {
-        if (!cancelled) {
-          setResponses(data.surveys);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setResponsesError(error.message || 'Не удалось загрузить ответы проекта');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setResponsesLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectId, token]);
+    void loadProjectResponses(selectedProjectId);
+  }, [loadProjectResponses, selectedProjectId, token]);
 
   useEffect(() => {
     if (embedded || token || debugTokenAttemptedRef.current) {
@@ -479,6 +556,144 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
     setExpandedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleCreateProjectSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!token) {
+        return;
+      }
+
+      const trimmed = newProjectName.trim();
+      if (!trimmed) {
+        setCreateProjectError('Введите название проекта');
+        return;
+      }
+
+      setCreatingProject(true);
+      setCreateProjectError(null);
+
+      try {
+        const response = await createAdminProject(token, trimmed);
+        setNewProjectName('');
+        setProjects((prev) => {
+          const without = prev.filter((project) => project.id !== response.project.id);
+          return [response.project, ...without];
+        });
+        setSelectedProjectId(response.project.id);
+      } catch (error) {
+        setCreateProjectError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setCreatingProject(false);
+      }
+    },
+    [newProjectName, token],
+  );
+
+  const handleRenameSelectedProject = useCallback(async () => {
+    if (!token || !selectedProject) {
+      return;
+    }
+
+    const nextName = window.prompt('Новое название проекта', selectedProject.name);
+    if (nextName === null) {
+      return;
+    }
+
+    const trimmed = nextName.trim();
+    if (!trimmed || trimmed === selectedProject.name) {
+      return;
+    }
+
+    setProjectActionId(selectedProject.id);
+    setProjectsError(null);
+
+    try {
+      const response = await updateAdminProjectName(token, selectedProject.id, trimmed);
+      setProjects((prev) => prev.map((project) => (project.id === response.project.id ? response.project : project)));
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setProjectActionId(null);
+    }
+  }, [selectedProject, token]);
+
+  const handleDeleteSelectedProject = useCallback(async () => {
+    if (!token || !selectedProject) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Удалить проект «${selectedProject.name}» вместе с ответами?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setProjectActionId(selectedProject.id);
+    setProjectsError(null);
+
+    try {
+      await deleteAdminProject(token, selectedProject.id);
+      setProjects((prev) => prev.filter((project) => project.id !== selectedProject.id));
+      setSelectedProjectId(null);
+      setResponses([]);
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setProjectActionId(null);
+    }
+  }, [selectedProject, token]);
+
+  const handleUpdateResponse = useCallback(
+    async (surveyId: number, updates: SurveyAnswers) => {
+      if (!token || !selectedProjectId) {
+        return;
+      }
+
+      setResponseActionId(surveyId);
+      setResponsesError(null);
+
+      try {
+        await updateAdminSurvey(token, surveyId, updates);
+        setEditingResponseId(null);
+        await loadProjectResponses(selectedProjectId);
+        await refreshProjectsList(true);
+      } catch (error) {
+        setResponsesError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setResponseActionId(null);
+      }
+    },
+    [loadProjectResponses, refreshProjectsList, selectedProjectId, token],
+  );
+
+  const handleDeleteResponse = useCallback(
+    async (surveyId: number) => {
+      if (!token || !selectedProjectId) {
+        return;
+      }
+
+      const confirmed = window.confirm('Удалить ответ пользователя?');
+      if (!confirmed) {
+        return;
+      }
+
+      setResponseActionId(surveyId);
+      setResponsesError(null);
+
+      try {
+        await deleteAdminSurvey(token, surveyId);
+        setEditingResponseId(null);
+        await loadProjectResponses(selectedProjectId);
+        await refreshProjectsList(true);
+      } catch (error) {
+        setResponsesError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setResponseActionId(null);
+      }
+    },
+    [loadProjectResponses, refreshProjectsList, selectedProjectId, token],
+  );
+
   if (!token) {
     return (
       <div className="app admin-app">
@@ -581,11 +796,11 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
               <div className="panel-body admin-projects">
                 {projectsLoading && <div className="hint">Загружаем проекты…</div>}
                 {!projectsLoading && projects.length === 0 && <div className="hint">Пока нет активных проектов.</div>}
-                {!projectsLoading && projects.length > 0 && (
-                  <div className="admin-project-list">
-                    {projects.map((project) => {
-                      const isActive = project.id === selectedProjectId;
-                      const { averages } = project;
+              {!projectsLoading && projects.length > 0 && (
+                <div className="admin-project-list">
+                  {projects.map((project) => {
+                    const isActive = project.id === selectedProjectId;
+                    const { averages } = project;
                       const lastResponseLabel = project.lastResponseAt
                         ? `Последний ответ: ${formatShortDateTime(project.lastResponseAt)}`
                         : 'Ответов пока нет';
@@ -619,27 +834,67 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                           </div>
                         </button>
                       );
-                    })}
+                  })}
+                </div>
+              )}
+              <form className="admin-project-add" onSubmit={handleCreateProjectSubmit}>
+                <label className="admin-project-add__label" htmlFor="admin-new-project">
+                  Добавить проект
+                </label>
+                <div className="admin-project-add__controls">
+                  <input
+                    id="admin-new-project"
+                    type="text"
+                    className="input"
+                    placeholder="Название проекта"
+                    value={newProjectName}
+                    onChange={(event) => setNewProjectName(event.target.value)}
+                    disabled={creatingProject}
+                  />
+                  <button type="submit" className="button" disabled={creatingProject || !newProjectName.trim()}>
+                    {creatingProject ? 'Сохраняем…' : 'Добавить'}
+                  </button>
+                </div>
+                <p className={`admin-project-add__hint ${createProjectError ? 'admin-project-add__hint--error' : ''}`}>
+                  {createProjectError ?? 'Проект появится в списке и станет доступен команде.'}
+                </p>
+              </form>
+            </div>
+          </section>
+          <section className="panel admin-panel">
+            {selectedProject ? (
+              <>
+                <header className="panel-header admin-details__header">
+                  <div>
+                    <h2>{selectedProject.name}</h2>
+                    <p className="panel-subtitle">
+                      Сводка по вкладом в проект и текстовым комментариям. Всего ответов: {responses.length}.
+                    </p>
                   </div>
-                )}
-              </div>
-            </section>
-            <section className="panel admin-panel">
-              {selectedProject ? (
-                <>
-                  <header className="panel-header">
-                    <div>
-                      <h2>{selectedProject.name}</h2>
-                      <p className="panel-subtitle">
-                        Сводка по вкладом в проект и текстовым комментариям. Всего ответов: {responses.length}.
-                      </p>
-                    </div>
-                  </header>
-                  <div className="admin-averages">
-                    {averageRows.map((row) => (
-                      <div key={row.label} className="admin-average-row">
-                        <div className="admin-average-header">
-                          <span>{row.label}</span>
+                  <div className="admin-details__actions">
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={handleRenameSelectedProject}
+                      disabled={projectActionId === selectedProject.id}
+                    >
+                      Переименовать
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--danger"
+                      onClick={handleDeleteSelectedProject}
+                      disabled={projectActionId === selectedProject.id}
+                    >
+                      Удалить проект
+                    </button>
+                  </div>
+                </header>
+                <div className="admin-averages">
+                  {averageRows.map((row) => (
+                    <div key={row.label} className="admin-average-row">
+                      <div className="admin-average-header">
+                        <span>{row.label}</span>
                           <span>{formatAverage(row.value)}</span>
                         </div>
                         <div className="admin-average-bar">
@@ -707,67 +962,104 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                               </button>
                               {isOpen && (
                                 <div className="admin-response-group__body">
-                                  {group.responses.map((response) => (
-                                    <article key={response.id} className="admin-response-card">
-                                      <header className="admin-response-card__header">
-                                        <div className="admin-response-card__title">
-                                          <span
-                                            className={`admin-response-card__origin ${
-                                              isMetalampAccount(response)
-                                                ? ''
-                                                : 'admin-response-card__origin--external'
-                                            }`}
-                                          >
-                                            {isMetalampAccount(response) ? 'Metallamp' : 'Не Metallamp'}
-                                          </span>
-                                          <h3>{formatUserName(response)}</h3>
-                                        </div>
-                                        <span className="admin-response-card__handle">{formatUserHandle(response)}</span>
-                                        <div className="admin-response-card__meta-group">
-                                          <span className="admin-response-card__meta">{formatDateTime(response.createdAt)}</span>
-                                          <span className="admin-response-card__meta">Проект: {response.projectName}</span>
-                                        </div>
-                                      </header>
-                                      <div className="admin-response-card__ratings">
-                                        <RatingRow label="Проект" value={response.projectRecommendation} />
-                                        <RatingRow label="Менеджер" value={response.managerEffectiveness} />
-                                        <RatingRow label="Команда" value={response.teamComfort} />
-                                        <RatingRow label="Процессы" value={response.processOrganization} />
-                                      </div>
-                                      <dl>
-                                        {response.projectImprovement && (
-                                          <div>
-                                            <dt>Проект</dt>
-                                            <dd>{response.projectImprovement}</dd>
-                                          </div>
+                                  {group.responses.map((response) => {
+                                    const isEditing = editingResponseId === response.id;
+                                    const isBusy = responseActionId === response.id;
+
+                                    return (
+                                      <article
+                                        key={response.id}
+                                        className={`admin-response-card ${isEditing ? 'admin-response-card--editing' : ''}`}
+                                      >
+                                        {isEditing ? (
+                                          <SurveyInlineEditor
+                                            survey={response}
+                                            questions={ADMIN_QUESTION_CONFIG}
+                                            isSaving={isBusy}
+                                            onSubmit={(draft) => handleUpdateResponse(response.id, draft)}
+                                            onClose={() => setEditingResponseId(null)}
+                                          />
+                                        ) : (
+                                          <>
+                                            <header className="admin-response-card__header">
+                                              <div className="admin-response-card__title">
+                                                <span
+                                                  className={`admin-response-card__origin ${
+                                                    isMetalampAccount(response)
+                                                      ? ''
+                                                      : 'admin-response-card__origin--external'
+                                                  }`}
+                                                >
+                                                  {isMetalampAccount(response) ? 'Metallamp' : 'Не Metallamp'}
+                                                </span>
+                                                <h3>{formatUserName(response)}</h3>
+                                              </div>
+                                              <div className="admin-response-card__meta-group">
+                                                <span className="admin-response-card__meta">{formatDateTime(response.createdAt)}</span>
+                                                <span className="admin-response-card__meta">Проект: {response.projectName}</span>
+                                              </div>
+                                              <div className="admin-response-card__actions">
+                                                <button
+                                                  type="button"
+                                                  className="button button--ghost"
+                                                  onClick={() => setEditingResponseId(response.id)}
+                                                >
+                                                  Редактировать
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="button button--danger"
+                                                  onClick={() => handleDeleteResponse(response.id)}
+                                                  disabled={isBusy}
+                                                >
+                                                  Удалить
+                                                </button>
+                                              </div>
+                                            </header>
+                                            <div className="admin-response-card__handle">{formatUserHandle(response)}</div>
+                                            <div className="admin-response-card__ratings">
+                                              <RatingRow label="Проект" value={response.projectRecommendation} />
+                                              <RatingRow label="Менеджер" value={response.managerEffectiveness} />
+                                              <RatingRow label="Команда" value={response.teamComfort} />
+                                              <RatingRow label="Процессы" value={response.processOrganization} />
+                                            </div>
+                                            <dl>
+                                              {response.projectImprovement && (
+                                                <div>
+                                                  <dt>Проект</dt>
+                                                  <dd>{response.projectImprovement}</dd>
+                                                </div>
+                                              )}
+                                              {response.managerImprovement && (
+                                                <div>
+                                                  <dt>Менеджер</dt>
+                                                  <dd>{response.managerImprovement}</dd>
+                                                </div>
+                                              )}
+                                              {response.teamImprovement && (
+                                                <div>
+                                                  <dt>Команда</dt>
+                                                  <dd>{response.teamImprovement}</dd>
+                                                </div>
+                                              )}
+                                              {response.processObstacles && (
+                                                <div>
+                                                  <dt>Процессы</dt>
+                                                  <dd>{response.processObstacles}</dd>
+                                                </div>
+                                              )}
+                                              {response.improvementIdeas && (
+                                                <div>
+                                                  <dt>Идеи</dt>
+                                                  <dd>{response.improvementIdeas}</dd>
+                                                </div>
+                                              )}
+                                            </dl>
+                                          </>
                                         )}
-                                        {response.managerImprovement && (
-                                          <div>
-                                            <dt>Менеджер</dt>
-                                            <dd>{response.managerImprovement}</dd>
-                                          </div>
-                                        )}
-                                        {response.teamImprovement && (
-                                          <div>
-                                            <dt>Команда</dt>
-                                            <dd>{response.teamImprovement}</dd>
-                                          </div>
-                                        )}
-                                        {response.processObstacles && (
-                                          <div>
-                                            <dt>Процессы</dt>
-                                            <dd>{response.processObstacles}</dd>
-                                          </div>
-                                        )}
-                                        {response.improvementIdeas && (
-                                          <div>
-                                            <dt>Идеи</dt>
-                                            <dd>{response.improvementIdeas}</dd>
-                                          </div>
-                                        )}
-                                      </dl>
-                                    </article>
-                                  ))}
+                                      </article>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -778,7 +1070,7 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                   </div>
                 </>
               ) : (
-                <div className="panel-body admin-no-selection">Выберите проект слева, чтобы увидеть подробности.</div>
+                <div className="panel-body admin-no-selection">Выберите проект, чтобы увидеть подробности.</div>
               )}
             </section>
           </main>

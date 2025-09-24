@@ -376,7 +376,7 @@ export async function listProjects(search: string | undefined, limit: number): P
   }));
 }
 
-export async function createProject(name: string, userId: number): Promise<ProjectSummary> {
+export async function createProject(name: string, userId?: number | null): Promise<ProjectSummary> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('Project name cannot be empty');
@@ -398,7 +398,7 @@ export async function createProject(name: string, userId: number): Promise<Proje
 
     const inserted = await client.query<{ id: number }>(
       'INSERT INTO projects (name, created_by) VALUES ($1, $2) RETURNING id',
-      [trimmed, userId],
+      [trimmed, userId ?? null],
     );
 
     const insertedRow = inserted.rows[0];

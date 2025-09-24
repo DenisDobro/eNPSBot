@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { adminAuth } from '../middleware/adminAuth';
 import {
+  createProject,
   deleteProject,
   deleteSurvey,
   listAdminProjectResponses,
@@ -38,9 +39,28 @@ router.get('/projects', async (_req, res) => {
   }
 });
 
+const createProjectSchema = z.object({
+  name: z.string().min(2).max(120),
+});
+
 const idSchema = z.number().int().positive();
 const projectNameSchema = z.object({
   name: z.string().min(2).max(120),
+});
+
+router.post('/projects', async (req, res) => {
+  const parseResult = createProjectSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Invalid project payload', details: parseResult.error.flatten() });
+    return;
+  }
+
+  try {
+    const project = await createProject(parseResult.data.name, null);
+    res.status(201).json({ project });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
 });
 
 router.patch('/projects/:id', async (req, res) => {
