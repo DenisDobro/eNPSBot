@@ -1,10 +1,10 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import request from 'supertest';
 import type { Express } from 'express';
+import { newDb } from 'pg-mem';
+import type { Pool } from 'pg';
 
 import type { SurveyAnswers } from '../src/types';
+import { setDbPool, initDB, closeDbPool } from '../src/db';
 
 const adminToken = 'test-admin-token';
 const debugUser = {
@@ -19,29 +19,31 @@ const debugHeaders = {
 
 describe('Admin project and survey management', () => {
   let app: Express;
-  let tempDbPath: string;
   let projectId: number;
   let surveyId: number;
+  let testPool: Pool;
 
   beforeAll(async () => {
-    tempDbPath = path.join(os.tmpdir(), `enps-admin-tests-${Date.now()}.sqlite`);
-
     process.env.ALLOW_INSECURE_INIT_DATA = 'true';
     process.env.ADMIN_TOKEN = adminToken;
     process.env.SERVE_FRONTEND = 'false';
-    process.env.DATABASE_FILE = tempDbPath;
 
     jest.resetModules();
-    const { initDB } = await import('../src/db');
-    initDB();
+
+    const db = newDb({ autoCreateForeignKeyIndices: true });
+    const adapter = db.adapters.createPg();
+    testPool = new adapter.Pool();
+    setDbPool(testPool);
+
+    await initDB();
+
     const { createApp } = await import('../src/app');
     app = createApp();
   });
 
-  afterAll(() => {
-    if (fs.existsSync(tempDbPath)) {
-      fs.unlinkSync(tempDbPath);
-    }
+  afterAll(async () => {
+    await closeDbPool();
+    await testPool.end();
   });
 
   it('creates a project as user and lists it', async () => {

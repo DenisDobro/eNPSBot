@@ -16,7 +16,7 @@ declare global {
 const DEBUG_USER_HEADER = 'x-debug-user';
 const TELEGRAM_INIT_HEADER = 'x-telegram-init-data';
 
-export function telegramAuth(req: Request, res: Response, next: NextFunction): void {
+export async function telegramAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const initDataRaw = req.header(TELEGRAM_INIT_HEADER);
 
   if (!initDataRaw) {
@@ -37,7 +37,7 @@ export function telegramAuth(req: Request, res: Response, next: NextFunction): v
         throw new Error('Invalid debug user payload');
       }
 
-      ensureUser(debugUser);
+      await ensureUser(debugUser);
       req.telegramUser = debugUser;
       req.initDataRaw = 'debug';
       next();
@@ -51,7 +51,7 @@ export function telegramAuth(req: Request, res: Response, next: NextFunction): v
   try {
     const botToken = requireBotToken();
     const { user } = validateTelegramInitData(initDataRaw, botToken);
-    ensureUser(user);
+    await ensureUser(user);
     req.telegramUser = user;
     req.initDataRaw = initDataRaw;
     next();

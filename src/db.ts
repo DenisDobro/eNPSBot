@@ -1,104 +1,119 @@
-import fs from 'fs';
-import path from 'path';
-import Database, { RunResult } from 'better-sqlite3';
+import { Pool, PoolClient } from 'pg';
 import { config } from './config';
-import { ContributionValue, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
+import {
+  ContributionValue,
+  SurveyAnswers,
+  SurveyRecord,
+  TelegramUser,
+} from './types';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-const dbDir = path.dirname(config.databaseFile);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
+let pool: Pool | null = null;
+let externalPool = false;
 
-const db = new Database(config.databaseFile);
-db.pragma('journal_mode = WAL');
-
-function migrateSurveysSchema(): void {
-  const existing = db
-    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'surveys'")
-    .get() as { sql: string } | undefined;
-
-  if (!existing?.sql) {
-    return;
+function ensurePool(): Pool {
+  if (pool) {
+    return pool;
   }
 
-  const hasUniqueConstraint = existing.sql.includes('UNIQUE(user_id, project_id, survey_date)');
-  if (hasUniqueConstraint) {
-    return;
+  if (!config.databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is not configured');
   }
 
-  db.exec(`
-    BEGIN TRANSACTION;
-    ALTER TABLE surveys RENAME TO surveys_legacy;
-    CREATE TABLE surveys (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      project_id INTEGER NOT NULL,
-      survey_date TEXT NOT NULL,
-      project_recommendation INTEGER,
-      project_improvement TEXT,
-      manager_effectiveness INTEGER,
-      manager_improvement TEXT,
-      team_comfort INTEGER,
-      team_improvement TEXT,
-      process_organization INTEGER,
-      process_obstacles TEXT,
-      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
-      improvement_ideas TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY(user_id) REFERENCES users(id),
-      FOREIGN KEY(project_id) REFERENCES projects(id),
-      UNIQUE(user_id, project_id, survey_date)
-    );
-    INSERT INTO surveys (
-      id,
-      user_id,
-      project_id,
-      survey_date,
-      project_recommendation,
-      project_improvement,
-      manager_effectiveness,
-      manager_improvement,
-      team_comfort,
-      team_improvement,
-      process_organization,
-      process_obstacles,
-      contribution_valued,
-      improvement_ideas,
-      created_at,
-      updated_at
-    )
-    SELECT
-      id,
-      user_id,
-      project_id,
-      survey_date,
-      project_recommendation,
-      project_improvement,
-      manager_effectiveness,
-      manager_improvement,
-      team_comfort,
-      team_improvement,
-      process_organization,
-      process_obstacles,
-      contribution_valued,
-      improvement_ideas,
-      created_at,
-      updated_at
-    FROM surveys_legacy;
-    DROP TABLE surveys_legacy;
-    COMMIT;
-  `);
+  pool = new Pool({
+    connectionString: config.databaseUrl,
+    ssl: config.databaseUrl.includes('sslmode=disable')
+      ? undefined
+      : { rejectUnauthorized: false },
+  });
+
+  pool.on('error', (error) => {
+    // eslint-disable-next-line no-console
+    console.error('Postgres pool error', error);
+  });
+
+  return pool;
 }
 
-type SurveyRow = {
-  id: number;
-  user_id: number;
-  project_id: number;
+export function setDbPool(customPool: Pool): void {
+  if (pool && !externalPool) {
+    void pool.end();
+  }
+
+  pool = customPool;
+  externalPool = true;
+}
+
+export async function closeDbPool(): Promise<void> {
+  if (pool && !externalPool) {
+    await pool.end();
+  }
+
+  pool = null;
+  externalPool = false;
+}
+
+async function withClient<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+  const db = ensurePool();
+  const client = await db.connect();
+
+  try {
+    return await callback(client);
+  } finally {
+    client.release();
+  }
+}
+
+function toIsoString(value: string | Date | null | undefined): string {
+  if (!value) {
+    throw new Error('Unexpected null date value');
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  return new Date(value).toISOString();
+}
+
+function toDateOnly(value: string | Date): string {
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return value.slice(0, 10);
+}
+
+function nullableNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseCount(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseAverage(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+interface SurveyRow {
+  id: number | string;
+  user_id: number | string;
+  project_id: number | string;
   project_name: string;
-  survey_date: string;
+  survey_date: string | Date;
   project_recommendation: number | null;
   project_improvement: string | null;
   manager_effectiveness: number | null;
@@ -109,9 +124,9 @@ type SurveyRow = {
   process_obstacles: string | null;
   contribution_valued: ContributionValue | null;
   improvement_ideas: string | null;
-  created_at: string;
-  updated_at: string;
-};
+  created_at: string | Date;
+  updated_at: string | Date;
+}
 
 export interface ProjectSummary {
   id: number;
@@ -141,112 +156,17 @@ export interface AdminSurveyRecord extends SurveyRecord {
   };
 }
 
-export function initDB(): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY,
-      first_name TEXT NOT NULL,
-      last_name TEXT,
-      username TEXT,
-      language_code TEXT,
-      photo_url TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      created_by INTEGER,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(created_by) REFERENCES users(id)
-    );
-  `);
-
-  migrateSurveysSchema();
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS surveys (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      project_id INTEGER NOT NULL,
-      survey_date TEXT NOT NULL,
-      project_recommendation INTEGER,
-      project_improvement TEXT,
-      manager_effectiveness INTEGER,
-      manager_improvement TEXT,
-      team_comfort INTEGER,
-      team_improvement TEXT,
-      process_organization INTEGER,
-      process_obstacles TEXT,
-      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'no', 'partial')),
-      improvement_ideas TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY(user_id) REFERENCES users(id),
-      FOREIGN KEY(project_id) REFERENCES projects(id),
-      UNIQUE(user_id, project_id, survey_date)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
-    CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys(user_id, project_id, survey_date);
-    CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys(project_id, created_at);
-  `);
-}
-
-export function ensureUser(user: TelegramUser): void {
-  const now = new Date().toISOString();
-  const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(user.id);
-
-  if (existing) {
-    db.prepare(
-      `UPDATE users
-       SET first_name = ?,
-           last_name = ?,
-           username = ?,
-           language_code = ?,
-           photo_url = ?,
-           updated_at = ?
-       WHERE id = ?`,
-    ).run(
-      user.first_name,
-      user.last_name ?? null,
-      user.username ?? null,
-      user.language_code ?? null,
-      user.photo_url ?? null,
-      now,
-      user.id,
-    );
-
-    return;
-  }
-
-  db.prepare(
-    `INSERT INTO users (id, first_name, last_name, username, language_code, photo_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    user.id,
-    user.first_name,
-    user.last_name ?? null,
-    user.username ?? null,
-    user.language_code ?? null,
-    user.photo_url ?? null,
-    now,
-    now,
-  );
-}
-
 function mapSurveyRow(row: SurveyRow): SurveyRecord {
-  const createdAt = row.created_at;
-  const updatedAt = row.updated_at;
-  const editable = Date.now() - new Date(createdAt).getTime() <= ONE_DAY_MS;
+  const createdAtIso = toIsoString(row.created_at);
+  const updatedAtIso = toIsoString(row.updated_at);
+  const canEdit = Date.now() - new Date(createdAtIso).getTime() <= ONE_DAY_MS;
 
   return {
-    id: row.id,
-    userId: row.user_id,
-    projectId: row.project_id,
+    id: Number(row.id),
+    userId: Number(row.user_id),
+    projectId: Number(row.project_id),
     projectName: row.project_name,
-    surveyDate: row.survey_date,
+    surveyDate: toDateOnly(row.survey_date),
     projectRecommendation: nullableNumber(row.project_recommendation),
     projectImprovement: row.project_improvement ?? undefined,
     managerEffectiveness: nullableNumber(row.manager_effectiveness),
@@ -257,132 +177,246 @@ function mapSurveyRow(row: SurveyRow): SurveyRecord {
     processObstacles: row.process_obstacles ?? undefined,
     contributionValued: row.contribution_valued ?? undefined,
     improvementIdeas: row.improvement_ideas ?? undefined,
-    createdAt,
-    updatedAt,
-    canEdit: editable,
+    createdAt: createdAtIso,
+    updatedAt: updatedAtIso,
+    canEdit,
   };
 }
 
-function nullableNumber(value: number | null): number | undefined {
-  return typeof value === 'number' ? value : undefined;
+async function fetchSurveyRowById(id: number, client?: PoolClient): Promise<SurveyRow | undefined> {
+  const executor = client ?? ensurePool();
+  const { rows } = await executor.query<SurveyRow>(
+    `SELECT
+       s.id,
+       s.user_id,
+       s.project_id,
+       p.name AS project_name,
+       s.survey_date,
+       s.project_recommendation,
+       s.project_improvement,
+       s.manager_effectiveness,
+       s.manager_improvement,
+       s.team_comfort,
+       s.team_improvement,
+       s.process_organization,
+       s.process_obstacles,
+       s.contribution_valued,
+       s.improvement_ideas,
+       s.created_at,
+       s.updated_at
+     FROM surveys s
+     JOIN projects p ON p.id = s.project_id
+     WHERE s.id = $1`,
+    [id],
+  );
+
+  return rows[0];
 }
 
-export function listProjects(search: string | undefined, limit: number): ProjectSummary[] {
-  const conditions: string[] = [];
-  const params: Array<string | number> = [];
+async function fetchProjectSummary(id: number, client?: PoolClient): Promise<ProjectSummary | undefined> {
+  const executor = client ?? ensurePool();
+  const { rows } = await executor.query(
+    `SELECT
+       p.id,
+       p.name,
+       p.created_at,
+       COUNT(s.id) AS responses_count,
+       MAX(s.created_at) AS last_response_at
+     FROM projects p
+     LEFT JOIN surveys s ON s.project_id = p.id
+     WHERE p.id = $1
+     GROUP BY p.id`,
+    [id],
+  );
 
-  if (search) {
-    conditions.push('LOWER(p.name) LIKE ?');
-    params.push(`%${search.toLowerCase()}%`);
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const query = `
-    SELECT
-      p.id,
-      p.name,
-      p.created_at AS createdAt,
-      (
-        SELECT COUNT(1)
-        FROM surveys s
-        WHERE s.project_id = p.id
-      ) AS responsesCount,
-      (
-        SELECT MAX(s.created_at)
-        FROM surveys s
-        WHERE s.project_id = p.id
-      ) AS lastResponseAt
-    FROM projects p
-    ${whereClause}
-    ORDER BY COALESCE(lastResponseAt, p.created_at) DESC
-    LIMIT ?
-  `;
-
-  params.push(limit);
-
-  const statement = db.prepare(query);
-  const rows = statement.all(...(params as unknown[])) as ProjectSummary[];
-  return rows;
-}
-
-export function createProject(name: string, userId: number): ProjectSummary {
-  const existing = db
-    .prepare('SELECT id, name, created_at as createdAt FROM projects WHERE LOWER(name) = LOWER(?)')
-    .get(name) as { id: number; name: string; createdAt: string } | undefined;
-  if (existing) {
-    const responsesStats = db
-      .prepare(
-        `SELECT
-           COUNT(1) as responsesCount,
-           MAX(created_at) as lastResponseAt
-         FROM surveys
-         WHERE project_id = ?`,
-      )
-      .get(existing.id) as { responsesCount: number; lastResponseAt: string | null } | undefined;
-
-    return {
-      id: existing.id,
-      name: existing.name,
-      createdAt: existing.createdAt,
-      responsesCount: responsesStats?.responsesCount ?? 0,
-      lastResponseAt: responsesStats?.lastResponseAt ?? null,
-    };
-  }
-
-  const now = new Date().toISOString();
-
-  const result: RunResult = db
-    .prepare(
-      `INSERT INTO projects (name, created_by, created_at)
-       VALUES (?, ?, ?)`,
-    )
-    .run(name.trim(), userId, now);
-
-  return {
-    id: Number(result.lastInsertRowid),
-    name: name.trim(),
-    createdAt: now,
-    responsesCount: 0,
-    lastResponseAt: null,
-  };
-}
-
-export function getSurveyById(id: number, userId: number): SurveyRecord | undefined {
-  const row = db
-    .prepare(
-      `SELECT s.*, p.name AS project_name
-       FROM surveys s
-       JOIN projects p ON p.id = s.project_id
-       WHERE s.id = ? AND s.user_id = ?`,
-    )
-    .get(id, userId) as SurveyRow | undefined;
-
+  const row = rows[0];
   if (!row) {
     return undefined;
   }
 
-  return mapSurveyRow(row);
+  return {
+    id: Number(row.id),
+    name: row.name,
+    createdAt: toIsoString(row.created_at as string | Date),
+    responsesCount: parseCount(row.responses_count),
+    lastResponseAt: row.last_response_at ? toIsoString(row.last_response_at as string | Date) : null,
+  };
 }
 
-export function listSurveys(userId: number, projectId?: number): SurveyRecord[] {
-  const params: Array<number> = [userId];
-  let query = `
-    SELECT s.*, p.name AS project_name
-    FROM surveys s
-    JOIN projects p ON p.id = s.project_id
-    WHERE s.user_id = ?
-  `;
+export async function initDB(): Promise<void> {
+  const db = ensurePool();
 
-  if (typeof projectId === 'number') {
-    query += ' AND s.project_id = ?';
-    params.push(projectId);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id BIGINT PRIMARY KEY,
+      first_name TEXT NOT NULL,
+      last_name TEXT,
+      username TEXT,
+      language_code TEXT,
+      photo_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      created_by BIGINT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS surveys (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      survey_date DATE NOT NULL,
+      project_recommendation SMALLINT,
+      project_improvement TEXT,
+      manager_effectiveness SMALLINT,
+      manager_improvement TEXT,
+      team_comfort SMALLINT,
+      team_improvement TEXT,
+      process_organization SMALLINT,
+      process_obstacles TEXT,
+      contribution_valued TEXT CHECK (contribution_valued IN ('yes', 'partial', 'no')),
+      improvement_ideas TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, project_id, survey_date)
+    )
+  `);
+
+  await db.query('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects (LOWER(name))');
+  await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys (user_id, project_id, survey_date)');
+  await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys (project_id, created_at DESC)');
+}
+
+export async function ensureUser(user: TelegramUser): Promise<void> {
+  const db = ensurePool();
+
+  await db.query(
+    `INSERT INTO users (id, first_name, last_name, username, language_code, photo_url, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       first_name = EXCLUDED.first_name,
+       last_name = EXCLUDED.last_name,
+       username = EXCLUDED.username,
+       language_code = EXCLUDED.language_code,
+       photo_url = EXCLUDED.photo_url,
+       updated_at = NOW()`,
+    [
+      user.id,
+      user.first_name,
+      user.last_name ?? null,
+      user.username ?? null,
+      user.language_code ?? null,
+      user.photo_url ?? null,
+    ],
+  );
+}
+
+export async function listProjects(search: string | undefined, limit: number): Promise<ProjectSummary[]> {
+  const db = ensurePool();
+  const params: unknown[] = [];
+  let index = 1;
+  let whereClause = '';
+
+  if (search) {
+    whereClause = `WHERE LOWER(p.name) LIKE $${index}`;
+    params.push(`%${search.toLowerCase()}%`);
+    index += 1;
   }
 
-  query += ' ORDER BY s.created_at DESC';
+  params.push(limit);
 
-  const rows = db.prepare(query).all(...(params as unknown[])) as SurveyRow[];
-  return rows.map(mapSurveyRow);
+  const { rows } = await db.query(
+    `SELECT
+       p.id,
+       p.name,
+       p.created_at,
+       COUNT(s.id) AS responses_count,
+       MAX(s.created_at) AS last_response_at
+     FROM projects p
+     LEFT JOIN surveys s ON s.project_id = p.id
+     ${whereClause}
+     GROUP BY p.id
+     ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC
+     LIMIT $${index}`,
+    params,
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: row.name,
+    createdAt: toIsoString(row.created_at as string | Date),
+    responsesCount: parseCount(row.responses_count),
+    lastResponseAt: row.last_response_at ? toIsoString(row.last_response_at as string | Date) : null,
+  }));
+}
+
+export async function createProject(name: string, userId: number): Promise<ProjectSummary> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Project name cannot be empty');
+  }
+
+  return withClient(async (client) => {
+    const existing = await client.query<{ id: number }>(
+      'SELECT id FROM projects WHERE LOWER(name) = LOWER($1) LIMIT 1',
+      [trimmed],
+    );
+
+    if (existing.rowCount && existing.rows[0]) {
+      const summary = await fetchProjectSummary(existing.rows[0].id, client);
+      if (!summary) {
+        throw new Error('Failed to load existing project');
+      }
+      return summary;
+    }
+
+    const inserted = await client.query<{ id: number }>(
+      'INSERT INTO projects (name, created_by) VALUES ($1, $2) RETURNING id',
+      [trimmed, userId],
+    );
+
+    const insertedRow = inserted.rows[0];
+    if (!insertedRow) {
+      throw new Error('Failed to create project');
+    }
+
+    const projectId = insertedRow.id;
+    const summary = await fetchProjectSummary(projectId, client);
+    if (!summary) {
+      throw new Error('Failed to load project after creation');
+    }
+    return summary;
+  });
+}
+
+export async function updateProjectName(id: number, name: string): Promise<ProjectSummary | undefined> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Project name cannot be empty');
+  }
+
+  return withClient(async (client) => {
+    const { rowCount } = await client.query('UPDATE projects SET name = $1 WHERE id = $2', [trimmed, id]);
+    if (rowCount === 0) {
+      return undefined;
+    }
+
+    return fetchProjectSummary(id, client);
+  });
+}
+
+export async function deleteProject(id: number): Promise<void> {
+  const db = ensurePool();
+  await db.query('DELETE FROM projects WHERE id = $1', [id]);
 }
 
 function formatDate(date: Date): string {
@@ -394,32 +428,54 @@ export interface SurveyCreationResult {
   wasCreated: boolean;
 }
 
-export function createSurvey(userId: number, projectId: number, surveyDate?: string): SurveyCreationResult {
+export async function createSurvey(userId: number, projectId: number, surveyDate?: string): Promise<SurveyCreationResult> {
   const now = new Date();
   const date = surveyDate ?? formatDate(now);
-  const timestamp = now.toISOString();
 
-  const insert = db
-    .prepare(
-      `INSERT OR IGNORE INTO surveys (user_id, project_id, survey_date, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)`,
-    )
-    .run(userId, projectId, date, timestamp, timestamp);
+  return withClient(async (client) => {
+    const insertResult = await client.query(
+      `INSERT INTO surveys (user_id, project_id, survey_date)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, project_id, survey_date) DO NOTHING
+       RETURNING id`,
+      [userId, projectId, date],
+    );
 
-  const row = db
-    .prepare(
-      `SELECT s.*, p.name AS project_name
+    const recordRow = await client.query<SurveyRow>(
+      `SELECT
+         s.id,
+         s.user_id,
+         s.project_id,
+         p.name AS project_name,
+         s.survey_date,
+         s.project_recommendation,
+         s.project_improvement,
+         s.manager_effectiveness,
+         s.manager_improvement,
+         s.team_comfort,
+         s.team_improvement,
+         s.process_organization,
+         s.process_obstacles,
+         s.contribution_valued,
+         s.improvement_ideas,
+         s.created_at,
+         s.updated_at
        FROM surveys s
        JOIN projects p ON p.id = s.project_id
-       WHERE s.user_id = ? AND s.project_id = ? AND s.survey_date = ?`,
-    )
-    .get(userId, projectId, date) as SurveyRow | undefined;
+       WHERE s.user_id = $1 AND s.project_id = $2 AND s.survey_date = $3`,
+      [userId, projectId, date],
+    );
 
-  if (!row) {
-    throw new Error('Failed to load survey after creation');
-  }
+    const row = recordRow.rows[0];
+    if (!row) {
+      throw new Error('Failed to load survey after creation');
+    }
 
-  return { record: mapSurveyRow(row), wasCreated: insert.changes > 0 };
+    return {
+      record: mapSurveyRow(row),
+      wasCreated: Boolean(insertResult.rowCount && insertResult.rowCount > 0),
+    };
+  });
 }
 
 const surveyFieldToColumn: Record<keyof SurveyAnswers, string> = {
@@ -435,8 +491,80 @@ const surveyFieldToColumn: Record<keyof SurveyAnswers, string> = {
   improvementIdeas: 'improvement_ideas',
 };
 
-export function updateSurvey(id: number, userId: number, updates: SurveyAnswers): SurveyRecord {
-  const survey = getSurveyById(id, userId);
+export async function getSurveyById(id: number, userId: number): Promise<SurveyRecord | undefined> {
+  const db = ensurePool();
+  const { rows } = await db.query<SurveyRow>(
+    `SELECT
+       s.id,
+       s.user_id,
+       s.project_id,
+       p.name AS project_name,
+       s.survey_date,
+       s.project_recommendation,
+       s.project_improvement,
+       s.manager_effectiveness,
+       s.manager_improvement,
+       s.team_comfort,
+       s.team_improvement,
+       s.process_organization,
+       s.process_obstacles,
+       s.contribution_valued,
+       s.improvement_ideas,
+       s.created_at,
+       s.updated_at
+     FROM surveys s
+     JOIN projects p ON p.id = s.project_id
+     WHERE s.id = $1 AND s.user_id = $2`,
+    [id, userId],
+  );
+
+  const row = rows[0];
+  return row ? mapSurveyRow(row) : undefined;
+}
+
+export async function listSurveys(userId: number, projectId?: number): Promise<SurveyRecord[]> {
+  const db = ensurePool();
+  const params: unknown[] = [userId];
+  let index = 2;
+  let filter = '';
+
+  if (typeof projectId === 'number') {
+    filter = ` AND s.project_id = $${index}`;
+    params.push(projectId);
+    index += 1;
+  }
+
+  const { rows } = await db.query<SurveyRow>(
+    `SELECT
+       s.id,
+       s.user_id,
+       s.project_id,
+       p.name AS project_name,
+       s.survey_date,
+       s.project_recommendation,
+       s.project_improvement,
+       s.manager_effectiveness,
+       s.manager_improvement,
+       s.team_comfort,
+       s.team_improvement,
+       s.process_organization,
+       s.process_obstacles,
+       s.contribution_valued,
+       s.improvement_ideas,
+       s.created_at,
+       s.updated_at
+     FROM surveys s
+     JOIN projects p ON p.id = s.project_id
+     WHERE s.user_id = $1${filter}
+     ORDER BY s.created_at DESC`,
+    params,
+  );
+
+  return rows.map(mapSurveyRow);
+}
+
+export async function updateSurvey(id: number, userId: number, updates: SurveyAnswers): Promise<SurveyRecord> {
+  const survey = await getSurveyById(id, userId);
   if (!survey) {
     throw new Error('Survey not found');
   }
@@ -446,7 +574,7 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
   }
 
   const assignments: string[] = [];
-  const values: Array<string | number | null> = [];
+  const values: unknown[] = [];
 
   (Object.keys(updates) as Array<keyof SurveyAnswers>).forEach((key) => {
     const value = updates[key];
@@ -454,116 +582,162 @@ export function updateSurvey(id: number, userId: number, updates: SurveyAnswers)
       return;
     }
 
-    assignments.push(`${surveyFieldToColumn[key]} = ?`);
-
-    if (typeof value === 'number') {
-      values.push(value);
-    } else if (value === null) {
-      values.push(null);
-    } else {
-      values.push(value);
+    const column = surveyFieldToColumn[key];
+    if (!column) {
+      return;
     }
+
+    if (value === null) {
+      assignments.push(`${column} = NULL`);
+      return;
+    }
+
+    assignments.push(`${column} = $${values.length + 1}`);
+    values.push(value);
   });
 
-  if (!assignments.length) {
+  if (assignments.length === 0) {
     return survey;
   }
 
-  const timestamp = new Date().toISOString();
-  assignments.push('updated_at = ?');
-  values.push(timestamp);
-  values.push(id);
-  values.push(userId);
+  values.push(id, userId);
 
-  const update = db.prepare(
+  await ensurePool().query(
     `UPDATE surveys
-     SET ${assignments.join(', ')}
-     WHERE id = ? AND user_id = ?`,
+     SET ${assignments.join(', ')}, updated_at = NOW()
+     WHERE id = $${values.length - 1} AND user_id = $${values.length}`,
+    values,
   );
 
-  update.run(...values);
+  const updated = await getSurveyById(id, userId);
+  if (!updated) {
+    throw new Error('Failed to load survey after update');
+  }
 
-  return getSurveyById(id, userId)!;
+  return updated;
 }
 
-export function listAdminProjects(): AdminProjectStats[] {
-  const rows = db
-    .prepare(
-      `SELECT
-         p.id,
-         p.name,
-         p.created_at AS createdAt,
-         COUNT(s.id) AS responsesCount,
-         MAX(s.created_at) AS lastResponseAt,
-         COUNT(DISTINCT s.user_id) AS uniqueRespondents,
-         AVG(s.project_recommendation) AS avgProjectRecommendation,
-         AVG(s.manager_effectiveness) AS avgManagerEffectiveness,
-         AVG(s.team_comfort) AS avgTeamComfort,
-         AVG(s.process_organization) AS avgProcessOrganization,
-         SUM(CASE WHEN s.contribution_valued = 'yes' THEN 1 ELSE 0 END) AS contributionYes,
-         SUM(CASE WHEN s.contribution_valued = 'partial' THEN 1 ELSE 0 END) AS contributionPartial,
-         SUM(CASE WHEN s.contribution_valued = 'no' THEN 1 ELSE 0 END) AS contributionNo
-       FROM projects p
-       LEFT JOIN surveys s ON s.project_id = p.id
-       GROUP BY p.id
-       ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC`);
+export async function updateSurveyAnswers(id: number, updates: SurveyAnswers): Promise<SurveyRecord | undefined> {
+  const assignments: string[] = [];
+  const values: unknown[] = [];
 
-  return (rows.all() as Array<Record<string, unknown>>).map((row) => {
-    const responsesCount = Number(row.responsesCount ?? 0);
-    const average = (value: unknown): number | null => {
-      if (value === null || value === undefined) {
-        return null;
+  (Object.entries(updates) as Array<[keyof SurveyAnswers, SurveyAnswers[keyof SurveyAnswers]]>).forEach(
+    ([key, value]) => {
+      const column = surveyFieldToColumn[key];
+      if (!column) {
+        return;
       }
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
 
-    return {
-      id: row.id as number,
-      name: row.name as string,
-      createdAt: row.createdAt as string,
-      responsesCount,
-      lastResponseAt: (row.lastResponseAt as string | null) ?? null,
-      uniqueRespondents: Number(row.uniqueRespondents ?? 0),
-      averages: {
-        projectRecommendation: average(row.avgProjectRecommendation),
-        managerEffectiveness: average(row.avgManagerEffectiveness),
-        teamComfort: average(row.avgTeamComfort),
-        processOrganization: average(row.avgProcessOrganization),
-      },
-      contributionBreakdown: {
-        yes: Number(row.contributionYes ?? 0) as number,
-        partial: Number(row.contributionPartial ?? 0) as number,
-        no: Number(row.contributionNo ?? 0) as number,
-      },
-    };
-  });
+      if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+        assignments.push(`${column} = NULL`);
+        return;
+      }
+
+      assignments.push(`${column} = $${values.length + 1}`);
+      values.push(typeof value === 'string' ? value.trim() : value);
+    },
+  );
+
+  if (assignments.length > 0) {
+    values.push(id);
+    await ensurePool().query(
+      `UPDATE surveys SET ${assignments.join(', ')}, updated_at = NOW() WHERE id = $${values.length}`,
+      values,
+    );
+  }
+
+  const row = await fetchSurveyRowById(id);
+  return row ? mapSurveyRow(row) : undefined;
 }
 
-export function listAdminProjectResponses(projectId: number): AdminSurveyRecord[] {
-  const rows = db
-    .prepare(
-      `SELECT
-         s.*,
-         p.name AS project_name,
-         u.first_name,
-         u.last_name,
-         u.username
-       FROM surveys s
-       JOIN projects p ON p.id = s.project_id
-       JOIN users u ON u.id = s.user_id
-       WHERE s.project_id = ?
-       ORDER BY s.created_at DESC`,
-    )
-    .all(projectId) as Array<SurveyRow & { first_name: string; last_name: string | null; username: string | null }>;
+export async function deleteSurvey(id: number): Promise<void> {
+  const db = ensurePool();
+  await db.query('DELETE FROM surveys WHERE id = $1', [id]);
+}
+
+export async function listAdminProjects(): Promise<AdminProjectStats[]> {
+  const db = ensurePool();
+  const { rows } = await db.query(
+    `SELECT
+       p.id,
+       p.name,
+       p.created_at,
+       COUNT(s.id) AS responses_count,
+       MAX(s.created_at) AS last_response_at,
+       COUNT(DISTINCT s.user_id) AS unique_respondents,
+       AVG(s.project_recommendation) AS avg_project_recommendation,
+       AVG(s.manager_effectiveness) AS avg_manager_effectiveness,
+       AVG(s.team_comfort) AS avg_team_comfort,
+       AVG(s.process_organization) AS avg_process_organization,
+       SUM(CASE WHEN s.contribution_valued = 'yes' THEN 1 ELSE 0 END) AS contribution_yes,
+       SUM(CASE WHEN s.contribution_valued = 'partial' THEN 1 ELSE 0 END) AS contribution_partial,
+       SUM(CASE WHEN s.contribution_valued = 'no' THEN 1 ELSE 0 END) AS contribution_no
+     FROM projects p
+     LEFT JOIN surveys s ON s.project_id = p.id
+     GROUP BY p.id
+     ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC`,
+  );
 
   return rows.map((row) => ({
-    ...mapSurveyRow(row),
+    id: Number(row.id),
+    name: row.name,
+    createdAt: toIsoString(row.created_at as string | Date),
+    responsesCount: parseCount(row.responses_count),
+    lastResponseAt: row.last_response_at ? toIsoString(row.last_response_at as string | Date) : null,
+    uniqueRespondents: parseCount(row.unique_respondents),
+    averages: {
+      projectRecommendation: parseAverage(row.avg_project_recommendation),
+      managerEffectiveness: parseAverage(row.avg_manager_effectiveness),
+      teamComfort: parseAverage(row.avg_team_comfort),
+      processOrganization: parseAverage(row.avg_process_organization),
+    },
+    contributionBreakdown: {
+      yes: parseCount(row.contribution_yes) as number,
+      partial: parseCount(row.contribution_partial) as number,
+      no: parseCount(row.contribution_no) as number,
+    },
+  }));
+}
+
+export async function listAdminProjectResponses(projectId: number): Promise<AdminSurveyRecord[]> {
+  const db = ensurePool();
+  const { rows } = await db.query(
+    `SELECT
+       s.id,
+       s.user_id,
+       s.project_id,
+       p.name AS project_name,
+       s.survey_date,
+       s.project_recommendation,
+       s.project_improvement,
+       s.manager_effectiveness,
+       s.manager_improvement,
+       s.team_comfort,
+       s.team_improvement,
+       s.process_organization,
+       s.process_obstacles,
+       s.contribution_valued,
+       s.improvement_ideas,
+       s.created_at,
+       s.updated_at,
+       u.first_name,
+       u.last_name,
+       u.username
+     FROM surveys s
+     JOIN projects p ON p.id = s.project_id
+     JOIN users u ON u.id = s.user_id
+     WHERE s.project_id = $1
+     ORDER BY s.created_at DESC`,
+    [projectId],
+  );
+
+  return rows.map((row) => ({
+    ...mapSurveyRow(row as SurveyRow),
     user: {
-      id: row.user_id,
+      id: Number(row.user_id),
       firstName: row.first_name,
-      lastName: row.last_name,
-      username: row.username,
+      lastName: row.last_name ?? null,
+      username: row.username ?? null,
     },
   }));
 }

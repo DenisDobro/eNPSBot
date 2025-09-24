@@ -8,7 +8,7 @@ interface ProjectSelectorProps {
   search: string;
   onSearchChange: (value: string) => void;
   onSelect: (project: ProjectSummary) => void;
-  onAddProject: (name: string) => Promise<void>;
+  onAddProject?: (name: string) => Promise<void>;
   isLoading: boolean;
   error?: string | null;
 }
@@ -28,6 +28,10 @@ export function ProjectSelector({
   const [addError, setAddError] = useState<string | null>(null);
 
   const handleAddProject = async (event: FormEvent) => {
+    if (!onAddProject) {
+      return;
+    }
+
     event.preventDefault();
     const trimmed = projectName.trim();
     if (!trimmed) {
@@ -92,30 +96,32 @@ export function ProjectSelector({
           );
         })}
       </div>
-      <form className="project-add" onSubmit={handleAddProject}>
-        <label className="project-add__label" htmlFor="new-project">
-          Добавить проект
-        </label>
-        <div className="project-add__controls">
-          <input
-            id="new-project"
-            type="text"
-            value={projectName}
-            className="input"
-            onChange={(event) => setProjectName(event.target.value)}
-            placeholder="Название проекта"
-            disabled={adding}
-          />
-          <button type="submit" className="button" disabled={adding}>
-            {adding ? 'Сохраняем…' : 'Добавить'}
-          </button>
-        </div>
-        {(addError || (!projects.length && !isLoading)) && (
-          <p className={`form-hint ${addError ? 'error-message' : 'hint'}`}>
-            {addError ?? 'Добавьте проект, чтобы начать собирать обратную связь.'}
-          </p>
-        )}
-      </form>
+      {onAddProject && (
+        <form className="project-add" onSubmit={handleAddProject}>
+          <label className="project-add__label" htmlFor="new-project">
+            Добавить проект
+          </label>
+          <div className="project-add__controls">
+            <input
+              id="new-project"
+              type="text"
+              value={projectName}
+              className="input"
+              onChange={(event) => setProjectName(event.target.value)}
+              placeholder="Название проекта"
+              disabled={adding}
+            />
+            <button type="submit" className="button" disabled={adding}>
+              {adding ? 'Сохраняем…' : 'Добавить'}
+            </button>
+          </div>
+          {(addError || (!projects.length && !isLoading)) && (
+            <p className={`form-hint ${addError ? 'error-message' : 'hint'}`}>
+              {addError ?? 'Добавьте проект, чтобы начать собирать обратную связь.'}
+            </p>
+          )}
+        </form>
+      )}
     </section>
   );
 }

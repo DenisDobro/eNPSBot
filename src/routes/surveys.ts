@@ -29,7 +29,7 @@ const updateSchema = z.object({
   improvementIdeas: textField,
 });
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const user = req.telegramUser;
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -39,11 +39,15 @@ router.get('/', (req, res) => {
   const projectIdParam = typeof req.query.projectId === 'string' ? Number(req.query.projectId) : undefined;
   const projectId = Number.isFinite(projectIdParam) ? projectIdParam : undefined;
 
-  const surveys = listSurveys(user.id, projectId);
-  res.json({ surveys });
+  try {
+    const surveys = await listSurveys(user.id, projectId);
+    res.json({ surveys });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const user = req.telegramUser;
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -56,16 +60,20 @@ router.get('/:id', (req, res) => {
     return;
   }
 
-  const survey = getSurveyById(id, user.id);
-  if (!survey) {
-    res.status(404).json({ error: 'Survey not found' });
-    return;
-  }
+  try {
+    const survey = await getSurveyById(id, user.id);
+    if (!survey) {
+      res.status(404).json({ error: 'Survey not found' });
+      return;
+    }
 
-  res.json({ survey });
+    res.json({ survey });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const user = req.telegramUser;
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -79,14 +87,14 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const survey = createSurvey(user.id, parseResult.data.projectId, parseResult.data.surveyDate);
+    const survey = await createSurvey(user.id, parseResult.data.projectId, parseResult.data.surveyDate);
     res.status(survey.wasCreated ? 201 : 200).json(survey);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const user = req.telegramUser;
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -140,7 +148,7 @@ router.patch('/:id', (req, res) => {
   }
 
   try {
-    const survey = updateSurvey(id, user.id, cleaned);
+    const survey = await updateSurvey(id, user.id, cleaned);
     res.json({ survey });
   } catch (error) {
     res.status(400).json({ error: (error as Error).message });

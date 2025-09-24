@@ -12,7 +12,7 @@
 
 ## Технологии
 
-- **Backend:** Node.js, Express, SQLite (better-sqlite3), TypeScript;
+- **Backend:** Node.js, Express, PostgreSQL (Supabase), TypeScript;
 - **Frontend:** React + Vite + TypeScript, Telegram Web Apps API;
 - **Валидация:** Zod;
 - **Стили:** кастомные компоненты и CSS без дополнительных библиотек.
@@ -35,7 +35,13 @@
 
    Для локальной разработки без Telegram можно задать `ALLOW_INSECURE_INIT_DATA=true` и передавать фиктивного пользователя через заголовок `x-debug-user`. Переменная `ADMIN_TOKEN` требуется для доступа к административному API и встраиваемой панели аналитики.
 
-3. При первом запуске файл базы данных SQLite создается автоматически. По умолчанию он располагается в `data/enps.sqlite`, путь можно изменить через `DATABASE_FILE`.
+3. Настройте подключение к Supabase/PostgreSQL: добавьте в `.env` строку `DATABASE_URL` с параметрами подключения вида
+
+   ```ini
+   DATABASE_URL=postgresql://postgres:password@<host>:5432/postgres?sslmode=require
+   ```
+
+   Для Supabase строка подключения находится в разделе **Project Settings → Database**. Обязательно оставьте `sslmode=require`, иначе Node.js клиент не установит защищённое соединение.
 
 ## Локальный запуск
 
