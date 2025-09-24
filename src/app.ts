@@ -33,7 +33,22 @@ export function createApp(): express.Express {
     const clientDist = path.resolve(process.cwd(), 'client', 'dist');
     app.use(express.static(clientDist));
 
-    app.get('/*', (_req, res) => {
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') {
+        next();
+        return;
+      }
+
+      if (req.path.startsWith('/api')) {
+        next();
+        return;
+      }
+
+      if (req.path === '/health') {
+        next();
+        return;
+      }
+
       res.sendFile(path.join(clientDist, 'index.html'));
     });
   }
