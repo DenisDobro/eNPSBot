@@ -18,6 +18,7 @@ import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from '
 
 type AppMode = 'user' | 'admin';
 type ThemeMode = 'light' | 'dark';
+type UserSection = 'survey' | 'history';
 
 function getInitialMode(): AppMode {
   try {
@@ -262,6 +263,8 @@ export default function App() {
   const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '');
   const [mode, setMode] = useState<AppMode>(getInitialMode);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [userSection, setUserSection] = useState<UserSection>('survey');
 
   useEffect(() => {
     if (adminToken) {
@@ -321,6 +324,8 @@ export default function App() {
     setCurrentSurvey(null);
     setActiveStep(0);
     setBanner(null);
+    setUserSection('survey');
+    setMenuOpen(false);
   }, []);
 
   const switchToAdmin = useCallback(() => {
@@ -355,6 +360,35 @@ export default function App() {
       setMode('user');
     }
   }, [ensureAdminToken, mode]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (mode === 'admin') {
+      setMenuOpen(false);
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (userSection === 'survey') {
+      setEditingSurveyId(null);
+    }
+  }, [userSection]);
 
   const refreshProjects = useCallback(
     async (searchTerm?: string) => {
@@ -580,44 +614,95 @@ export default function App() {
     setEditingSurveyId(null);
   }, []);
 
+  const handleMenuToggle = useCallback(() => {
+    setMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleSelectSection = useCallback((section: UserSection) => {
+    setUserSection(section);
+    setMenuOpen(false);
+  }, []);
+
+  const handleAdminShortcut = useCallback(() => {
+    setMenuOpen(false);
+    switchToAdmin();
+  }, [switchToAdmin]);
+
   const bannerMarkup =
     banner && (
       <div className={`banner ${banner.type === 'error' ? 'banner--error' : 'banner--success'}`}>{banner.message}</div>
     );
 
-  const renderHeader = (activeMode: AppMode) => (
+  const navigationMarkup =
+    mode === 'user'
+      ? (
+          <>
+            <button
+              type="button"
+              className={`nav-toggle ${menuOpen ? 'nav-toggle--open' : ''}`}
+              onClick={handleMenuToggle}
+              aria-expanded={menuOpen}
+              aria-haspopup="true"
+              aria-label="Открыть меню"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            {menuOpen && (
+              <div className="nav-overlay" role="presentation" onClick={() => setMenuOpen(false)}>
+                <nav
+                  className="nav-menu"
+                  aria-label="Навигация по разделам"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <h2 className="nav-menu__title">Меню</h2>
+                  <button
+                    type="button"
+                    className={`nav-menu__item ${userSection === 'survey' ? 'nav-menu__item--active' : ''}`}
+                    onClick={() => handleSelectSection('survey')}
+                  >
+                    Анкета
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-menu__item ${userSection === 'history' ? 'nav-menu__item--active' : ''}`}
+                    onClick={() => handleSelectSection('history')}
+                  >
+                    История ответов
+                  </button>
+                  <button type="button" className="nav-menu__item nav-menu__item--accent" onClick={handleAdminShortcut}>
+                    Админ-панель
+                  </button>
+                  <p className="nav-menu__hint">Сохраняем анкеты по мере заполнения, редактировать можно в течение суток.</p>
+                </nav>
+              </div>
+            )}
+          </>
+        )
+      : null;
+
+  const renderHeader = () => (
     <header className="app-header">
-      <div>
+      <div className="app-header__titles">
         <h1 className="app-title">Метрика атмосферы</h1>
         <p className="app-subtitle">
           Сбор внутреннего NPS помогает нам понимать настроение команды в каждом спринте.
         </p>
       </div>
       <div className="header-actions">
-        <div className="role-toggle">
-          <button
-            type="button"
-            className={`role-toggle__button ${activeMode === 'user' ? 'role-toggle__button--active' : ''}`}
-            onClick={switchToUser}
-            disabled={activeMode === 'user'}
-          >
-            Пользователь
-          </button>
-          <button
-            type="button"
-            className={`role-toggle__button ${activeMode === 'admin' ? 'role-toggle__button--active' : ''}`}
-            onClick={switchToAdmin}
-            disabled={activeMode === 'admin'}
-          >
-            Администратор
-          </button>
-        </div>
-        {user && (
+        {mode === 'user' && user && (
           <div className="user-card">
             <span className="user-card__hello">Привет, {user.first_name}!</span>
             <span className="user-card__hint">
               Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
             </span>
+          </div>
+        )}
+        {mode === 'admin' && (
+          <div className="user-card">
+            <span className="user-card__hello">Режим администратора</span>
+            <span className="user-card__hint">Используйте панель, чтобы просматривать проекты и ответы.</span>
           </div>
         )}
       </div>
@@ -629,7 +714,7 @@ export default function App() {
       <div className="app">
         <div className="app-gradient" />
         <div className="app-container">
-          {renderHeader('admin')}
+          {renderHeader()}
           {bannerMarkup}
           <AdminApp
             embedded
@@ -647,7 +732,8 @@ export default function App() {
       <div className="app">
         <div className="app-gradient" />
         <div className="app-container">
-          {renderHeader('user')}
+          {navigationMarkup}
+          {renderHeader()}
           {bannerMarkup}
           <section className="panel">
             <header className="panel-header">
@@ -673,9 +759,10 @@ export default function App() {
     <div className="app">
       <div className="app-gradient" />
       <div className="app-container">
-        {renderHeader('user')}
+        {navigationMarkup}
+        {renderHeader()}
         {bannerMarkup}
-        <main className="app-grid">
+        <main className={`app-grid ${userSection === 'history' ? 'app-grid--history' : ''}`}>
           <ProjectSelector
             projects={projects}
             selectedProjectId={selectedProjectId}
@@ -697,7 +784,7 @@ export default function App() {
                 </header>
               </section>
             )}
-            {selectedProject && !currentSurvey && (
+            {selectedProject && userSection === 'survey' && !currentSurvey && (
               <section className="panel">
                 <header className="panel-header">
                   <div>
@@ -717,7 +804,7 @@ export default function App() {
                 </div>
               </section>
             )}
-            {currentSurvey && selectedProject && (
+            {currentSurvey && selectedProject && userSection === 'survey' && (
               <SurveyStepper
                 survey={currentSurvey}
                 questions={QUESTION_CONFIG}
@@ -729,7 +816,7 @@ export default function App() {
                 onExit={handleCloseSurvey}
               />
             )}
-            {selectedProject && (
+            {selectedProject && userSection === 'history' && (
               <ResponsesList
                 surveys={surveys}
                 questions={QUESTION_CONFIG}
@@ -741,6 +828,16 @@ export default function App() {
                 isSaving={savingAnswer}
                 projectName={selectedProject.name}
               />
+            )}
+            {userSection === 'history' && !selectedProject && (
+              <section className="panel">
+                <header className="panel-header">
+                  <div>
+                    <h2>История ответов</h2>
+                    <p className="panel-subtitle">Сначала выберите проект, чтобы посмотреть свои записи.</p>
+                  </div>
+                </header>
+              </section>
             )}
           </div>
         </main>
