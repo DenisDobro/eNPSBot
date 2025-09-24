@@ -295,22 +295,32 @@ export async function initDB(): Promise<void> {
   await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys (user_id, project_id, survey_date)');
   await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys (project_id, created_at DESC)');
 
-  await db.query('ALTER TABLE surveys ENABLE ROW LEVEL SECURITY');
-  await db.query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'surveys' AND policyname = 'allow_app_access'
-      ) THEN
-        CREATE POLICY allow_app_access ON surveys
-          FOR ALL
-          USING (true)
-          WITH CHECK (true);
-      END IF;
-    END;
-    $$;
-  `);
+  const rlsTables: Array<{ table: string; policy: string }> = [
+    { table: 'surveys', policy: 'allow_surveys_access' },
+    { table: 'projects', policy: 'allow_projects_access' },
+    { table: 'users', policy: 'allow_users_access' },
+  ];
+
+  for (const entry of rlsTables) {
+    await db.query(`ALTER TABLE ${entry.table} ENABLE ROW LEVEL SECURITY`);
+    await db.query(
+      `DO $$
+       BEGIN
+         IF NOT EXISTS (
+           SELECT 1 FROM pg_policies
+           WHERE schemaname = 'public'
+             AND tablename = '${entry.table}'
+             AND policyname = '${entry.policy}'
+         ) THEN
+           CREATE POLICY ${entry.policy} ON ${entry.table}
+             FOR ALL
+             USING (true)
+             WITH CHECK (true);
+         END IF;
+       END;
+       $$;`,
+    );
+  }
 }
 
 export async function ensureUser(user: TelegramUser): Promise<void> {
