@@ -172,6 +172,34 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
     [projects],
   );
 
+  const handleBackToUser = useCallback(() => {
+    if (onBackToUser) {
+      onBackToUser();
+      return;
+    }
+
+    if (window.location.pathname.startsWith('/admin')) {
+      window.location.href = '/';
+      return;
+    }
+
+    window.location.href = window.location.origin;
+  }, [onBackToUser]);
+
+  const handleOpenInBrowser = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (token) {
+      url.searchParams.set('adminToken', token);
+    }
+
+    const link = url.toString();
+    if (window.Telegram?.WebApp?.openLink) {
+      window.Telegram.WebApp.openLink(link);
+    } else {
+      window.open(link, '_blank', 'noopener');
+    }
+  }, [token]);
+
   const handleTokenSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -495,11 +523,12 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
             </p>
           </div>
           <div className="admin-header__actions">
-            {embedded && onBackToUser && (
-              <button type="button" className="button button--ghost" onClick={onBackToUser}>
-                Режим пользователя
-              </button>
-            )}
+            <button type="button" className="button button--ghost" onClick={handleBackToUser}>
+              Режим пользователя
+            </button>
+            <button type="button" className="button button--ghost" onClick={handleOpenInBrowser}>
+              Открыть в браузере
+            </button>
             <button
               type="button"
               className="button button--ghost"

@@ -6,10 +6,18 @@ import AdminApp from './AdminApp';
 
 const searchParams = new URLSearchParams(window.location.search);
 const isAdminView = window.location.pathname.startsWith('/admin') || searchParams.has('admin');
-const RootComponent = isAdminView ? AdminApp : App;
+const rootElement = document.getElementById('root')!;
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RootComponent />
-  </StrictMode>,
-);
+if (isAdminView) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <AdminApp onBackToUser={() => { window.location.href = '/'; }} />
+    </StrictMode>,
+  );
+} else {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}

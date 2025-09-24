@@ -130,24 +130,27 @@
 }
 
 .admin-summary-card {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--panel-background);
+  border: 1px solid var(--panel-border);
   border-radius: 16px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: white;
+  color: var(--text-primary);
+  box-shadow: var(--panel-shadow);
 }
 
 .admin-summary-label {
   font-size: 13px;
-  opacity: 0.85;
+  opacity: 1;
+  color: var(--text-secondary);
 }
 
 .admin-summary-value {
   font-size: 28px;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .admin-contribution {
@@ -156,7 +159,8 @@
 }
 
 .admin-contribution-bar {
-  background: rgba(108, 56, 255, 0.12);
+  background: var(--panel-background);
+  border: 1px solid var(--panel-border);
   border-radius: 12px;
   overflow: hidden;
   position: relative;
@@ -169,7 +173,7 @@
 .admin-contribution-fill {
   position: absolute;
   inset: 0;
-  background: rgba(108, 56, 255, 0.3);
+  background: linear-gradient(135deg, rgba(108, 56, 255, 0.2), rgba(34, 228, 253, 0.22));
   border-radius: 12px;
   transform-origin: left;
 }
@@ -180,7 +184,7 @@
   justify-content: space-between;
   width: 100%;
   font-weight: 600;
-  color: #2d1e57;
+  color: var(--text-primary);
 }
 
 .admin-responses__groups {
