@@ -576,7 +576,7 @@ export default function App(): JSX.Element {
           <header className="panel-header">
             <div>
               <h2>Выберите проект</h2>
-              <p className="panel-subtitle">Выберите проект слева, чтобы начать новую анкету.</p>
+              <p className="panel-subtitle">Выберите проект, чтобы начать новую анкету.</p>
             </div>
           </header>
         </section>

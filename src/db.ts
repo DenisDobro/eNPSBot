@@ -294,6 +294,23 @@ export async function initDB(): Promise<void> {
   await db.query('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects (LOWER(name))');
   await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys (user_id, project_id, survey_date)');
   await db.query('CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys (project_id, created_at DESC)');
+
+  await db.query('ALTER TABLE surveys ENABLE ROW LEVEL SECURITY');
+  await db.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'surveys' AND policyname = 'allow_app_access'
+      ) THEN
+        CREATE POLICY allow_app_access ON surveys
+          FOR ALL
+          USING (true)
+          WITH CHECK (true);
+      END IF;
+    END;
+    $$;
+  `);
 }
 
 export async function ensureUser(user: TelegramUser): Promise<void> {
