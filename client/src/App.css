@@ -54,6 +54,85 @@
   min-width: 0;
 }
 
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
+  position: relative;
+}
+
+.theme-toggle__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-background);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.theme-toggle__button:hover,
+.theme-toggle--open .theme-toggle__button {
+  border-color: var(--card-border-hover);
+  box-shadow: 0 16px 36px rgba(8, 15, 43, 0.25);
+  transform: translateY(-1px);
+}
+
+.theme-toggle__button:focus-visible {
+  outline: 3px solid rgba(255, 163, 0, 0.55);
+  outline-offset: 2px;
+}
+
+.theme-toggle__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.theme-toggle__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 18px 38px rgba(8, 15, 43, 0.26);
+  z-index: 12;
+}
+
+.theme-toggle__option {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle__option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.theme-toggle__option--active,
+.theme-toggle__option--active:hover {
+  background: var(--chip-background);
+  color: var(--accent-color);
+}
+
 .app-title {
   margin: 0;
   font-size: clamp(30px, 5vw, 46px);
@@ -382,6 +461,11 @@
 
   box-shadow: var(--button-hover-shadow);
   filter: brightness(1.05);
+}
+
+.button:focus-visible {
+  outline: 3px solid rgba(255, 163, 0, 0.55);
+  outline-offset: 2px;
 }
 
 .button:disabled {

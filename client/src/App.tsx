@@ -9,6 +9,7 @@ import { SurveyStepper, type QuestionConfig, type QuestionKey } from './componen
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
 type ThemeMode = 'light' | 'dark';
+type ThemePreference = 'system' | ThemeMode;
 
 type AppView = 'dashboard' | 'history';
 
@@ -105,12 +106,33 @@ function formatApiError(error: unknown): string {
   return message;
 }
 
-function useMetalampTheme(): ThemeMode {
+function useMetalampTheme(): {
+  theme: ThemeMode;
+  preference: ThemePreference;
+  setPreference: (value: ThemePreference) => void;
+} {
   const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => {
+    if (typeof window === 'undefined') {
+      return 'system';
+    }
+
+    const stored = window.localStorage?.getItem('themePreference');
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      return stored;
+    }
+
+    return 'system';
+  });
 
   useEffect(() => {
     const webApp = window.Telegram?.WebApp;
     const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+    if (preference === 'light' || preference === 'dark') {
+      setTheme(preference);
+      return undefined;
+    }
 
     const resolveTheme = (): ThemeMode => {
       if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
@@ -120,18 +142,10 @@ function useMetalampTheme(): ThemeMode {
       return mediaQuery?.matches ? 'dark' : 'light';
     };
 
-    const applyTheme = (mode: ThemeMode) => {
-      setTheme(mode);
-      if (typeof document !== 'undefined') {
-        document.body.dataset.theme = mode;
-        document.documentElement.style.setProperty('color-scheme', mode);
-      }
-    };
-
-    applyTheme(resolveTheme());
+    setTheme(resolveTheme());
 
     const handleTelegramTheme = () => {
-      applyTheme(resolveTheme());
+      setTheme(resolveTheme());
     };
 
     const handleSystemTheme = (event: MediaQueryListEvent) => {
@@ -139,7 +153,7 @@ function useMetalampTheme(): ThemeMode {
         return;
       }
 
-      applyTheme(event.matches ? 'dark' : 'light');
+      setTheme(event.matches ? 'dark' : 'light');
     };
 
     if (webApp?.onEvent) {
@@ -167,20 +181,34 @@ function useMetalampTheme(): ThemeMode {
         }
       }
     };
-  }, []);
+  }, [preference]);
 
   useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    if (!webApp) {
-      return;
+    if (typeof document !== 'undefined') {
+      document.body.dataset.theme = theme;
+      document.documentElement.style.setProperty('color-scheme', theme);
     }
 
-    const palette = TELEGRAM_THEME_COLORS[theme];
-    webApp.setBackgroundColor?.(palette.background);
-    webApp.setHeaderColor?.(palette.header);
+    const webApp = window.Telegram?.WebApp;
+    if (webApp) {
+      const palette = TELEGRAM_THEME_COLORS[theme];
+      webApp.setBackgroundColor?.(palette.background);
+      webApp.setHeaderColor?.(palette.header);
+    }
   }, [theme]);
 
-  return theme;
+  const setPreference = useCallback((value: ThemePreference) => {
+    setPreferenceState(value);
+    if (typeof window !== 'undefined') {
+      window.localStorage?.setItem('themePreference', value);
+    }
+
+    if (value === 'light' || value === 'dark') {
+      setTheme(value);
+    }
+  }, []);
+
+  return { theme, preference, setPreference };
 }
 
 function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; ready: boolean } {
@@ -220,7 +248,7 @@ function normalizeAnswersFromSurvey(survey: SurveyRecord): SurveyAnswers {
 }
 
 export default function App(): JSX.Element {
-  useMetalampTheme();
+  const { theme, preference, setPreference } = useMetalampTheme();
 
   const { auth, user, ready } = useTelegramUser();
 
@@ -242,12 +270,17 @@ export default function App(): JSX.Element {
   const [activeStep, setActiveStep] = useState(0);
   const [surveyStarted, setSurveyStarted] = useState(false);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
+  const [pendingStartFocus, setPendingStartFocus] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
   const surveyStateRef = useRef({
     started: false,
     submitted: false,
     currentId: null as number | null,
   });
+  const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const themeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     surveyStateRef.current = {
@@ -391,11 +424,31 @@ export default function App(): JSX.Element {
     setSurveySubmitted(false);
     setEditingSurveyId(null);
     setBanner(null);
+    setPendingStartFocus(true);
+    setView('dashboard');
+    setMenuOpen(false);
   }, []);
 
   const handleToggleMenu = useCallback(() => {
     setMenuOpen((value) => !value);
   }, []);
+
+  const toggleThemeMenu = useCallback(() => {
+    setThemeMenuOpen((open) => !open);
+  }, []);
+
+  const closeThemeMenu = useCallback(() => {
+    setThemeMenuOpen(false);
+  }, []);
+
+  const selectThemePreference = useCallback(
+    (value: ThemePreference) => {
+      setPreference(value);
+      closeThemeMenu();
+      themeButtonRef.current?.focus({ preventScroll: true });
+    },
+    [closeThemeMenu, setPreference],
+  );
 
   const handleStartSurvey = useCallback(async () => {
     if (!selectedProject) {
@@ -489,6 +542,52 @@ export default function App(): JSX.Element {
     surveyStateRef.current = { started: false, submitted: false, currentId: null };
   }, []);
 
+  useEffect(() => {
+    if (!pendingStartFocus || surveyStarted || currentSurvey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const target = startButtonRef.current;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.focus({ preventScroll: true });
+      }
+      setPendingStartFocus(false);
+    }, 80);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentSurvey, pendingStartFocus, surveyStarted]);
+
+  useEffect(() => {
+    if (!themeMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (themeButtonRef.current?.contains(target) || themeMenuRef.current?.contains(target)) {
+        return;
+      }
+
+      setThemeMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setThemeMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [themeMenuOpen]);
+
   const submitSurveyDraft = useCallback(
     async (surveyId: number, updates: SurveyAnswers, options?: { notify?: boolean }) => {
       if (!Object.keys(updates).length) {
@@ -559,6 +658,14 @@ export default function App(): JSX.Element {
 
   const focusMode = surveyStarted && currentSurvey;
 
+  const themeLabel = useMemo(() => {
+    if (preference === 'system') {
+      return theme === 'dark' ? 'Как в системе · Тёмная' : 'Как в системе · Светлая';
+    }
+
+    return preference === 'dark' ? 'Тёмная' : 'Светлая';
+  }, [preference, theme]);
+
   const renderDashboard = () => {
     if (!selectedProject) {
       return (
@@ -588,7 +695,13 @@ export default function App(): JSX.Element {
             <p className="hint">
               Анкета займёт около 4 минут. Ответы сохранятся только после завершения анкеты.
             </p>
-            <button type="button" className="button" onClick={handleStartSurvey} disabled={creatingSurvey}>
+            <button
+              type="button"
+              className="button"
+              onClick={handleStartSurvey}
+              disabled={creatingSurvey}
+              ref={startButtonRef}
+            >
               {creatingSurvey ? 'Готовим анкету…' : 'Начать тест'}
             </button>
           </div>
@@ -649,6 +762,66 @@ export default function App(): JSX.Element {
                 Откройте мини-приложение внутри Telegram, чтобы заполнить анкету или посмотреть историю ответов.
               </p>
             </div>
+            <div className="app-header__actions">
+              <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
+                <button
+                  type="button"
+                  className="theme-toggle__button"
+                  onClick={toggleThemeMenu}
+                  aria-haspopup="listbox"
+                  aria-expanded={themeMenuOpen}
+                  ref={themeButtonRef}
+                >
+                  <span className="theme-toggle__icon" aria-hidden="true">
+                    🌓
+                  </span>
+                  <span>{themeLabel}</span>
+                </button>
+                {themeMenuOpen && (
+                  <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'light'}
+                      className={
+                        preference === 'light'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('light')}
+                    >
+                      Светлая
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'dark'}
+                      className={
+                        preference === 'dark'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('dark')}
+                    >
+                      Тёмная
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'system'}
+                      className={
+                        preference === 'system'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('system')}
+                    >
+                      Как в системе
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </header>
         </div>
       </div>
@@ -707,12 +880,72 @@ export default function App(): JSX.Element {
               Следите за настроением команды, отвечайте честно и помогайте проектному офису принимать решения.
             </p>
           </div>
-          {user && (
-            <div className="user-card">
-              <span className="user-card__hello">Привет, {user.first_name}!</span>
-              <span className="user-card__hint">Ваши ответы видны только вам и проектному офису.</span>
+          <div className="app-header__actions">
+            <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
+              <button
+                type="button"
+                className="theme-toggle__button"
+                onClick={toggleThemeMenu}
+                aria-haspopup="listbox"
+                aria-expanded={themeMenuOpen}
+                ref={themeButtonRef}
+              >
+                <span className="theme-toggle__icon" aria-hidden="true">
+                  🌓
+                </span>
+                <span>{themeLabel}</span>
+              </button>
+              {themeMenuOpen && (
+                <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={preference === 'light'}
+                    className={
+                      preference === 'light'
+                        ? 'theme-toggle__option theme-toggle__option--active'
+                        : 'theme-toggle__option'
+                    }
+                    onClick={() => selectThemePreference('light')}
+                  >
+                    Светлая
+                  </button>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={preference === 'dark'}
+                    className={
+                      preference === 'dark'
+                        ? 'theme-toggle__option theme-toggle__option--active'
+                        : 'theme-toggle__option'
+                    }
+                    onClick={() => selectThemePreference('dark')}
+                  >
+                    Тёмная
+                  </button>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={preference === 'system'}
+                    className={
+                      preference === 'system'
+                        ? 'theme-toggle__option theme-toggle__option--active'
+                        : 'theme-toggle__option'
+                    }
+                    onClick={() => selectThemePreference('system')}
+                  >
+                    Как в системе
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+            {user && (
+              <div className="user-card">
+                <span className="user-card__hello">Привет, {user.first_name}!</span>
+                <span className="user-card__hint">Ваши ответы видны только вам и проектному офису.</span>
+              </div>
+            )}
+          </div>
         </header>
 
         {banner && (
