@@ -38,20 +38,20 @@ const projectNameSchema = z.object({
   name: z.string().min(2).max(120),
 });
 
-router.get('/projects', (_req, res) => {
-  const projects = listAdminProjects();
+router.get('/projects', async (_req, res) => {
+  const projects = await listAdminProjects();
   res.json({ projects });
 });
 
-router.post('/projects', (req, res) => {
+router.post('/projects', async (req, res) => {
   const parseResult = createProjectSchema.safeParse(req.body);
   if (!parseResult.success) {
     res.status(400).json({ error: 'Invalid project payload', details: parseResult.error.flatten() });
     return;
   }
 
-  const created = createProject(parseResult.data.name);
-  const stats = listAdminProjects().find((project) => project.id === created.id);
+  const created = await createProject(parseResult.data.name);
+  const stats = (await listAdminProjects()).find((project) => project.id === created.id);
 
   res.status(201).json({
     project:
@@ -69,7 +69,7 @@ router.post('/projects', (req, res) => {
   });
 });
 
-router.patch('/projects/:id', (req, res) => {
+router.patch('/projects/:id', async (req, res) => {
   const idResult = idSchema.safeParse(Number(req.params.id));
   if (!idResult.success) {
     res.status(400).json({ error: 'Invalid project id' });
@@ -82,13 +82,13 @@ router.patch('/projects/:id', (req, res) => {
     return;
   }
 
-  const updatedSummary = updateProjectName(idResult.data, parseResult.data.name);
+  const updatedSummary = await updateProjectName(idResult.data, parseResult.data.name);
   if (!updatedSummary) {
     res.status(404).json({ error: 'Project not found' });
     return;
   }
 
-  const stats = listAdminProjects().find((project) => project.id === updatedSummary.id);
+  const stats = (await listAdminProjects()).find((project) => project.id === updatedSummary.id);
 
   res.json({
     project:
@@ -106,14 +106,14 @@ router.patch('/projects/:id', (req, res) => {
   });
 });
 
-router.delete('/projects/:id', (req, res) => {
+router.delete('/projects/:id', async (req, res) => {
   const idResult = idSchema.safeParse(Number(req.params.id));
   if (!idResult.success) {
     res.status(400).json({ error: 'Invalid project id' });
     return;
   }
 
-  deleteProject(idResult.data);
+  await deleteProject(idResult.data);
   res.status(204).end();
 });
 
@@ -130,7 +130,7 @@ const surveyUpdateSchema = z.object({
   improvementIdeas: z.string().max(4000).optional(),
 });
 
-router.patch('/surveys/:id', (req, res) => {
+router.patch('/surveys/:id', async (req, res) => {
   const idResult = idSchema.safeParse(Number(req.params.id));
   if (!idResult.success) {
     res.status(400).json({ error: 'Invalid survey id' });
@@ -143,7 +143,7 @@ router.patch('/surveys/:id', (req, res) => {
     return;
   }
 
-  const updated = updateSurveyAnswers(idResult.data, parseResult.data);
+  const updated = await updateSurveyAnswers(idResult.data, parseResult.data);
   if (!updated) {
     res.status(404).json({ error: 'Survey not found' });
     return;
@@ -152,27 +152,27 @@ router.patch('/surveys/:id', (req, res) => {
   res.json({ survey: updated });
 });
 
-router.delete('/surveys/:id', (req, res) => {
+router.delete('/surveys/:id', async (req, res) => {
   const idResult = idSchema.safeParse(Number(req.params.id));
   if (!idResult.success) {
     res.status(400).json({ error: 'Invalid survey id' });
     return;
   }
 
-  deleteSurvey(idResult.data);
+  await deleteSurvey(idResult.data);
   res.status(204).end();
 });
 
 const idSchema = z.number().int().positive();
 
-router.get('/projects/:id/responses', (req, res) => {
+router.get('/projects/:id/responses', async (req, res) => {
   const parseResult = idSchema.safeParse(Number(req.params.id));
   if (!parseResult.success) {
     res.status(400).json({ error: 'Invalid project id' });
     return;
   }
 
-  const surveys = listAdminProjectResponses(parseResult.data);
+  const surveys = await listAdminProjectResponses(parseResult.data);
   res.json({ surveys });
 });
 

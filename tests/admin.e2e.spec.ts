@@ -30,10 +30,12 @@ describe('Admin project and survey management', () => {
     process.env.ADMIN_TOKEN = adminToken;
     process.env.SERVE_FRONTEND = 'false';
     process.env.DATABASE_FILE = tempDbPath;
+    process.env.DATABASE_URL = '';
+    process.env.USE_SUPABASE_DEFAULT = 'false';
 
     jest.resetModules();
     const { initDB } = await import('../src/db');
-    initDB();
+    await initDB();
     const { createApp } = await import('../src/app');
     app = createApp();
   });
