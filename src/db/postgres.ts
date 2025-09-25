@@ -171,6 +171,11 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
       CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys(user_id, project_id, survey_date);
       CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys(project_id, created_at);
     `);
+
+    // Supabase bootstrap can leave behind redundant permissive policies that conflict with
+    // the ones we rely on.  Explicitly drop the legacy insert policy so we only keep the
+    // canonical "allow_surveys_access" rule created through the dashboard/migrations.
+    await pool.query('DROP POLICY IF EXISTS "allow_app_access" ON public.surveys;');
   }
 
   async function ensureUser(user: TelegramUser): Promise<void> {
