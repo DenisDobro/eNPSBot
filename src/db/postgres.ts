@@ -638,8 +638,13 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
     }));
   }
 
+  async function close(): Promise<void> {
+    await pool.end();
+  }
+
   const adapter: DatabaseAdapter = {
     init,
+    close,
     ensureUser,
     listProjects,
     createProject,

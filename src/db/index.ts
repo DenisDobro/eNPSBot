@@ -12,72 +12,99 @@ import { SurveyAnswers, SurveyRecord, TelegramUser } from '../types';
 
 let adapter: DatabaseAdapter | null = null;
 
-function getAdapter(): DatabaseAdapter {
+function requireAdapter(): DatabaseAdapter {
   if (!adapter) {
-    if (config.databaseUrl) {
-      adapter = createPostgresAdapter(config.databaseUrl);
-    } else if (config.useSupabaseDefault) {
-      adapter = createPostgresAdapter(config.supabaseDefaultUrl);
-    } else {
-      adapter = createSqliteAdapter(config.databaseFile);
-    }
+    throw new Error('Database adapter has not been initialized. Call initDB() before using it.');
   }
 
   return adapter;
 }
 
-export function initDB(): Promise<void> {
-  return getAdapter().init();
+async function createAdapter(): Promise<void> {
+  if (adapter) {
+    return;
+  }
+
+  if (config.databaseUrl) {
+    const postgres = createPostgresAdapter(config.databaseUrl);
+    await postgres.init();
+    adapter = postgres;
+    return;
+  }
+
+  if (config.useSupabaseDefault) {
+    const supabase = createPostgresAdapter(config.supabaseDefaultUrl);
+    try {
+      await supabase.init();
+      adapter = supabase;
+      return;
+    } catch (error) {
+      await supabase.close().catch(() => undefined);
+      // eslint-disable-next-line no-console
+      console.warn(
+        'Failed to connect to the default Supabase database. Falling back to the local SQLite storage.',
+        error,
+      );
+    }
+  }
+
+  const sqlite = createSqliteAdapter(config.databaseFile);
+  await sqlite.init();
+  adapter = sqlite;
+}
+
+export async function initDB(): Promise<void> {
+  await createAdapter();
 }
 
 export function ensureUser(user: TelegramUser): Promise<void> {
-  return getAdapter().ensureUser(user);
+  return requireAdapter().ensureUser(user);
 }
 
 export function listProjects(search: string | undefined, limit: number): Promise<ProjectSummary[]> {
-  return getAdapter().listProjects(search, limit);
+  return requireAdapter().listProjects(search, limit);
 }
 
 export function createProject(name: string, createdBy?: number): Promise<ProjectSummary> {
-  return getAdapter().createProject(name, createdBy);
+  return requireAdapter().createProject(name, createdBy);
 }
 
 export function updateProjectName(id: number, name: string): Promise<ProjectSummary | undefined> {
-  return getAdapter().updateProjectName(id, name);
+  return requireAdapter().updateProjectName(id, name);
 }
 
 export function deleteProject(id: number): Promise<void> {
-  return getAdapter().deleteProject(id);
+  return requireAdapter().deleteProject(id);
 }
 
 export function deleteSurvey(id: number): Promise<void> {
-  return getAdapter().deleteSurvey(id);
+  return requireAdapter().deleteSurvey(id);
 }
 
 export function updateSurveyAnswers(id: number, updates: SurveyAnswers): Promise<SurveyRecord | undefined> {
-  return getAdapter().updateSurveyAnswers(id, updates);
+  return requireAdapter().updateSurveyAnswers(id, updates);
 }
 
 export function getSurveyById(id: number, userId: number): Promise<SurveyRecord | undefined> {
-  return getAdapter().getSurveyById(id, userId);
+  return requireAdapter().getSurveyById(id, userId);
 }
 
 export function listSurveys(userId: number, projectId?: number): Promise<SurveyRecord[]> {
-  return getAdapter().listSurveys(userId, projectId);
+  return requireAdapter().listSurveys(userId, projectId);
 }
 
 export function createSurvey(userId: number, projectId: number, surveyDate?: string): Promise<SurveyCreationResult> {
-  return getAdapter().createSurvey(userId, projectId, surveyDate);
+  return requireAdapter().createSurvey(userId, projectId, surveyDate);
 }
 
 export function updateSurvey(id: number, userId: number, updates: SurveyAnswers): Promise<SurveyRecord> {
-  return getAdapter().updateSurvey(id, userId, updates);
+  return requireAdapter().updateSurvey(id, userId, updates);
 }
 
 export function listAdminProjects(): Promise<AdminProjectStats[]> {
-  return getAdapter().listAdminProjects();
+  return requireAdapter().listAdminProjects();
 }
 
 export function listAdminProjectResponses(projectId: number): Promise<AdminSurveyRecord[]> {
-  return getAdapter().listAdminProjectResponses(projectId);
+  return requireAdapter().listAdminProjectResponses(projectId);
 }

@@ -35,6 +35,7 @@ export interface SurveyCreationResult {
 
 export interface DatabaseAdapter {
   init(): Promise<void>;
+  close(): Promise<void>;
   ensureUser(user: TelegramUser): Promise<void>;
   listProjects(search: string | undefined, limit: number): Promise<ProjectSummary[]>;
   createProject(name: string, createdBy?: number): Promise<ProjectSummary>;

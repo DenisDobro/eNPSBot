@@ -701,8 +701,13 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
     }));
   }
 
+  async function close(): Promise<void> {
+    db.close();
+  }
+
   return {
     init,
+    close,
     ensureUser,
     listProjects,
     createProject,
