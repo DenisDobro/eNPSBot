@@ -13,10 +13,58 @@ type ThemePreference = 'system' | ThemeMode;
 
 type AppView = 'dashboard' | 'history';
 
+type IconProps = { className?: string };
+
 const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
   dark: { background: '#080F2B', header: '#101940' },
   light: { background: '#F6F7FB', header: '#FFFFFF' },
 };
+
+function SunIcon({ className }: IconProps): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+      <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 3.5v2.2m0 12.6v2.2m8.5-8.5h-2.2M5.7 12H3.5m13.02 6.02-1.56-1.56M8.54 8.54 6.98 6.98m0 10.04 1.56-1.56m8.96-8.96-1.56 1.56"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: IconProps): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+      <path
+        d="M21 12.8A8.6 8.6 0 0 1 11.2 3a7.4 7.4 0 1 0 9.8 9.8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function ProfileIcon({ className }: IconProps): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+      <circle cx="12" cy="9" r="4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M6.2 19.5a6.5 6.5 0 1 1 11.6 0"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
 
 const QUESTION_CONFIG: QuestionConfig[] = [
   {
@@ -652,6 +700,14 @@ export default function App(): JSX.Element {
     }
   }, [refreshSurveys, selectedProjectId]);
 
+  const toggleHistoryView = useCallback(() => {
+    if (view === 'history') {
+      openDashboard();
+    } else {
+      openHistory();
+    }
+  }, [openDashboard, openHistory, view]);
+
   const goToAdmin = useCallback(() => {
     window.location.href = '/admin';
   }, []);
@@ -665,6 +721,8 @@ export default function App(): JSX.Element {
 
     return preference === 'dark' ? 'Тёмная' : 'Светлая';
   }, [preference, theme]);
+
+  const themeButtonLabel = useMemo(() => `Сменить тему. Сейчас: ${themeLabel}`, [themeLabel]);
 
   const renderDashboard = () => {
     if (!selectedProject) {
@@ -756,70 +814,75 @@ export default function App(): JSX.Element {
         <div className="app-gradient" />
         <div className="app-container">
           <header className="app-header">
-            <div>
-              <h1 className="app-title">Метрика атмосферы</h1>
-              <p className="app-subtitle">
-                Откройте мини-приложение внутри Telegram, чтобы заполнить анкету или посмотреть историю ответов.
-              </p>
+            <div className="app-header__top">
+              <div className="app-header__toolbar">
+                <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
+                  <button
+                    type="button"
+                    className="theme-toggle__button icon-button"
+                    onClick={toggleThemeMenu}
+                    aria-haspopup="listbox"
+                    aria-expanded={themeMenuOpen}
+                    ref={themeButtonRef}
+                    aria-label={themeButtonLabel}
+                    title={themeButtonLabel}
+                  >
+                    <span className="icon-button__glyph" aria-hidden="true">
+                      {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
+                    </span>
+                  </button>
+                  {themeMenuOpen && (
+                    <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={preference === 'light'}
+                        className={
+                          preference === 'light'
+                            ? 'theme-toggle__option theme-toggle__option--active'
+                            : 'theme-toggle__option'
+                        }
+                        onClick={() => selectThemePreference('light')}
+                      >
+                        Светлая
+                      </button>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={preference === 'dark'}
+                        className={
+                          preference === 'dark'
+                            ? 'theme-toggle__option theme-toggle__option--active'
+                            : 'theme-toggle__option'
+                        }
+                        onClick={() => selectThemePreference('dark')}
+                      >
+                        Тёмная
+                      </button>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={preference === 'system'}
+                        className={
+                          preference === 'system'
+                            ? 'theme-toggle__option theme-toggle__option--active'
+                            : 'theme-toggle__option'
+                        }
+                        onClick={() => selectThemePreference('system')}
+                      >
+                        Как в системе
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="app-header__actions">
-              <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
-                <button
-                  type="button"
-                  className="theme-toggle__button"
-                  onClick={toggleThemeMenu}
-                  aria-haspopup="listbox"
-                  aria-expanded={themeMenuOpen}
-                  ref={themeButtonRef}
-                >
-                  <span className="theme-toggle__icon" aria-hidden="true">
-                    🌓
-                  </span>
-                  <span>{themeLabel}</span>
-                </button>
-                {themeMenuOpen && (
-                  <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'light'}
-                      className={
-                        preference === 'light'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('light')}
-                    >
-                      Светлая
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'dark'}
-                      className={
-                        preference === 'dark'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('dark')}
-                    >
-                      Тёмная
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'system'}
-                      className={
-                        preference === 'system'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('system')}
-                    >
-                      Как в системе
-                    </button>
-                  </div>
-                )}
+            <div className="app-header__content">
+              <div className="app-header__titles">
+                <h1 className="app-title">Метрика атмосферы</h1>
+                <p className="app-subtitle">
+                  Откройте мини-приложение внутри Telegram, чтобы заполнить анкету или посмотреть историю ответов.
+                </p>
               </div>
             </div>
           </header>
@@ -869,75 +932,106 @@ export default function App(): JSX.Element {
       <div className="app-gradient" />
       <div className="app-container">
         <header className="app-header">
-          <button type="button" className="burger-button" onClick={handleToggleMenu} aria-label="Открыть меню">
-            <span />
-            <span />
-            <span />
-          </button>
-          <div className="app-header__titles">
-            <h1 className="app-title">Метрика атмосферы</h1>
-            <p className="app-subtitle">
-              Следите за настроением команды, отвечайте честно и помогайте проектному офису принимать решения.
-            </p>
-          </div>
-          <div className="app-header__actions">
-            <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
+          <div className="app-header__top">
+            <div className="app-header__toolbar">
               <button
                 type="button"
-                className="theme-toggle__button"
-                onClick={toggleThemeMenu}
-                aria-haspopup="listbox"
-                aria-expanded={themeMenuOpen}
-                ref={themeButtonRef}
+                className={`icon-button${view === 'history' ? ' icon-button--active' : ''}`}
+                onClick={toggleHistoryView}
+                aria-label={
+                  view === 'history'
+                    ? 'Закрыть личный кабинет и перейти к проектам'
+                    : 'Открыть личный кабинет с вашими ответами'
+                }
+                aria-pressed={view === 'history'}
+                title={
+                  view === 'history'
+                    ? 'Закрыть личный кабинет и перейти к проектам'
+                    : 'Открыть личный кабинет с вашими ответами'
+                }
               >
-                <span className="theme-toggle__icon" aria-hidden="true">
-                  🌓
+                <span className="icon-button__glyph" aria-hidden="true">
+                  <ProfileIcon />
                 </span>
-                <span>{themeLabel}</span>
               </button>
-              {themeMenuOpen && (
-                <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={preference === 'light'}
-                    className={
-                      preference === 'light'
-                        ? 'theme-toggle__option theme-toggle__option--active'
-                        : 'theme-toggle__option'
-                    }
-                    onClick={() => selectThemePreference('light')}
-                  >
-                    Светлая
-                  </button>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={preference === 'dark'}
-                    className={
-                      preference === 'dark'
-                        ? 'theme-toggle__option theme-toggle__option--active'
-                        : 'theme-toggle__option'
-                    }
-                    onClick={() => selectThemePreference('dark')}
-                  >
-                    Тёмная
-                  </button>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={preference === 'system'}
-                    className={
-                      preference === 'system'
-                        ? 'theme-toggle__option theme-toggle__option--active'
-                        : 'theme-toggle__option'
-                    }
-                    onClick={() => selectThemePreference('system')}
-                  >
-                    Как в системе
-                  </button>
-                </div>
-              )}
+              <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
+                <button
+                  type="button"
+                  className="theme-toggle__button icon-button"
+                  onClick={toggleThemeMenu}
+                  aria-haspopup="listbox"
+                  aria-expanded={themeMenuOpen}
+                  ref={themeButtonRef}
+                  aria-label={themeButtonLabel}
+                  title={themeButtonLabel}
+                >
+                  <span className="icon-button__glyph" aria-hidden="true">
+                    {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
+                  </span>
+                </button>
+                {themeMenuOpen && (
+                  <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'light'}
+                      className={
+                        preference === 'light'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('light')}
+                    >
+                      Светлая
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'dark'}
+                      className={
+                        preference === 'dark'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('dark')}
+                    >
+                      Тёмная
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={preference === 'system'}
+                      className={
+                        preference === 'system'
+                          ? 'theme-toggle__option theme-toggle__option--active'
+                          : 'theme-toggle__option'
+                      }
+                      onClick={() => selectThemePreference('system')}
+                    >
+                      Как в системе
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="icon-button burger-button"
+                onClick={handleToggleMenu}
+                aria-label="Открыть меню"
+                title="Открыть меню"
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+            </div>
+          </div>
+          <div className="app-header__content">
+            <div className="app-header__titles">
+              <h1 className="app-title">Метрика атмосферы</h1>
+              <p className="app-subtitle">
+                Следите за настроением команды, отвечайте честно и помогайте проектному офису принимать решения.
+              </p>
             </div>
             {user && (
               <div className="user-card">
