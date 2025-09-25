@@ -90,6 +90,10 @@ function completedSurveyCondition(alias?: string): string {
   return completedSurveyColumns.map((column) => `${prefix}${column} IS NOT NULL`).join(' AND ');
 }
 
+function isSurveyRowComplete(row: SurveyRow): boolean {
+  return completedSurveyColumns.every((column) => row[column] !== null);
+}
+
 function createPool(databaseUrl: string): Pool {
   const url = new URL(databaseUrl);
   const sslRequired = !['localhost', '127.0.0.1'].includes(url.hostname);
@@ -126,6 +130,7 @@ function mapSurveyRow(row: SurveyRow): SurveyRecord {
     createdAt,
     updatedAt,
     canEdit: editable,
+    isComplete: isSurveyRowComplete(row),
   };
 }
 

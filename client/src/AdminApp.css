@@ -356,6 +356,11 @@
   gap: 14px;
 }
 
+.admin-response-card--incomplete {
+  border-color: var(--banner-error-border);
+  box-shadow: 0 0 0 1px rgba(255, 93, 97, 0.25);
+}
+
 .admin-response-card--editing {
   padding: 0;
   border: none;

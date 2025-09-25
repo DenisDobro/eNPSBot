@@ -145,9 +145,10 @@ export function ResponsesList({
         {surveys.map((survey) => {
           const updated = formatDate(survey.updatedAt);
           const isEditing = editingSurveyId === survey.id;
+          const cardClassName = `response-card${survey.isComplete ? '' : ' response-card--incomplete'}`;
 
           return (
-            <article key={survey.id} className="response-card">
+            <article key={survey.id} className={cardClassName}>
               {isEditing ? (
                 <SurveyInlineEditor
                   survey={survey}
@@ -163,6 +164,14 @@ export function ResponsesList({
                     <span className="response-card__meta">Обновлено: {updated}</span>
                   </header>
                   <div className="response-card__content">
+                    {!survey.isComplete && (
+                      <div className="response-card__status" role="note">
+                        <span className="response-card__status-icon" aria-hidden="true">
+                          ⚠️
+                        </span>
+                        <span>Анкета заполнена не полностью — ответы не учитываются в статистике.</span>
+                      </div>
+                    )}
 
                     <span className="response-card__project">{survey.projectName}</span>
 

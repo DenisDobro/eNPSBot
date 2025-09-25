@@ -833,6 +833,29 @@
 
 }
 
+.response-card--incomplete {
+  border-color: var(--banner-error-border);
+  box-shadow: 0 0 0 1px rgba(255, 93, 97, 0.25);
+}
+
+.response-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--banner-error-bg);
+  border: 1px solid var(--banner-error-border);
+  color: var(--banner-error-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.response-card__status-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .response-card__header {
   display: flex;
   justify-content: space-between;

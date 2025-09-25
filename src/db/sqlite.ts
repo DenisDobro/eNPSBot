@@ -63,6 +63,10 @@ function completedSurveyCondition(alias?: string): string {
   return completedSurveyColumns.map((column) => `${prefix}${column} IS NOT NULL`).join(' AND ');
 }
 
+function isSurveyRowComplete(row: SurveyRow): boolean {
+  return completedSurveyColumns.every((column) => row[column] !== null);
+}
+
 export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
   const dbDir = path.dirname(databaseFile);
   if (!fs.existsSync(dbDir)) {
@@ -217,6 +221,7 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
       createdAt,
       updatedAt,
       canEdit: editable,
+      isComplete: isSurveyRowComplete(row),
     };
   }
 

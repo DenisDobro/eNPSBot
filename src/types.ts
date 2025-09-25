@@ -31,4 +31,5 @@ export interface SurveyRecord extends SurveyAnswers {
   createdAt: string;
   updatedAt: string;
   canEdit: boolean;
+  isComplete: boolean;
 }

@@ -957,10 +957,17 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                                 {group.responses.map((response) => {
                                   const isEditing = editingResponseId === response.id;
                                   const isBusy = responseActionId === response.id;
+                                  const adminResponseClass = [
+                                    'admin-response-card',
+                                    isEditing ? 'admin-response-card--editing' : '',
+                                    response.isComplete ? '' : 'admin-response-card--incomplete',
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' ');
                                   return (
                                     <article
                                       key={response.id}
-                                      className={`admin-response-card ${isEditing ? 'admin-response-card--editing' : ''}`}
+                                      className={adminResponseClass}
                                     >
                                       {isEditing ? (
                                         <SurveyInlineEditor
@@ -997,6 +1004,14 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
                                               </button>
                                             </div>
                                           </header>
+                                          {!response.isComplete && (
+                                            <div className="response-card__status" role="note">
+                                              <span className="response-card__status-icon" aria-hidden="true">
+                                                ⚠️
+                                              </span>
+                                              <span>Анкета заполнена не полностью — ответы не учитываются в статистике.</span>
+                                            </div>
+                                          )}
                                           <div className="admin-response-card__ratings">
                                             <RatingRow label="Проект" value={response.projectRecommendation} />
                                             <RatingRow label="Менеджер" value={response.managerEffectiveness} />
