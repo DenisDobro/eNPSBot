@@ -1,0 +1,15 @@
+node_modules/
+build/
+client/node_modules/
+client/dist/
+.logs/
+.npm-cache/
+.env
+npm-debug.log*
+.DS_Store
+.env.local
+*.log
+logs/
+
+# SQLite runtime artifacts
+data/
