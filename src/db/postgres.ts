@@ -72,6 +72,24 @@ const surveyFieldToColumn: Record<keyof SurveyAnswers, string> = {
   improvementIdeas: 'improvement_ideas',
 };
 
+const completedSurveyColumns = [
+  'project_recommendation',
+  'project_improvement',
+  'manager_effectiveness',
+  'manager_improvement',
+  'team_comfort',
+  'team_improvement',
+  'process_organization',
+  'process_obstacles',
+  'contribution_valued',
+  'improvement_ideas',
+] as const;
+
+function completedSurveyCondition(alias?: string): string {
+  const prefix = alias ? `${alias}.` : '';
+  return completedSurveyColumns.map((column) => `${prefix}${column} IS NOT NULL`).join(' AND ');
+}
+
 function createPool(databaseUrl: string): Pool {
   const url = new URL(databaseUrl);
   const sslRequired = !['localhost', '127.0.0.1'].includes(url.hostname);
@@ -225,19 +243,19 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
         (
           SELECT COUNT(1)
           FROM surveys s
-          WHERE s.project_id = p.id
+          WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
         ) AS "responsesCount",
         (
           SELECT MAX(s.created_at)
           FROM surveys s
-          WHERE s.project_id = p.id
+          WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
         ) AS "lastResponseAt"
       FROM projects p
       ${whereClause}
       ORDER BY COALESCE((
         SELECT MAX(s.created_at)
         FROM surveys s
-        WHERE s.project_id = p.id
+        WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
       ), p.created_at) DESC
       LIMIT ${limitParam}
     `;
@@ -266,7 +284,7 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
            COUNT(1) AS "responsesCount",
            MAX(created_at) AS "lastResponseAt"
          FROM surveys
-         WHERE project_id = $1`,
+         WHERE project_id = $1 AND ${completedSurveyCondition()}`,
         [project.id],
       );
 
@@ -303,10 +321,10 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
          p.name,
          p.created_at AS "createdAt",
          (
-           SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id
+           SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
          ) AS "responsesCount",
          (
-           SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id
+           SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
          ) AS "lastResponseAt"
        FROM projects p
        WHERE p.id = $1`,
@@ -548,7 +566,7 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
          SUM(CASE WHEN s.contribution_valued = 'partial' THEN 1 ELSE 0 END) AS "contributionPartial",
          SUM(CASE WHEN s.contribution_valued = 'no' THEN 1 ELSE 0 END) AS "contributionNo"
        FROM projects p
-       LEFT JOIN surveys s ON s.project_id = p.id
+       LEFT JOIN surveys s ON s.project_id = p.id AND ${completedSurveyCondition('s')}
        GROUP BY p.id
        ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC`,
     );
@@ -592,14 +610,14 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
     }>(
       `SELECT
          s.*,
-         p.name AS project_name,
-         u.first_name,
-         u.last_name,
-         u.username
+       p.name AS project_name,
+       u.first_name,
+       u.last_name,
+       u.username
        FROM surveys s
        JOIN projects p ON p.id = s.project_id
        JOIN users u ON u.id = s.user_id
-       WHERE s.project_id = $1
+       WHERE s.project_id = $1 AND ${completedSurveyCondition('s')}
        ORDER BY s.created_at DESC`,
       [projectId],
     );

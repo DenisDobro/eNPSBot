@@ -79,10 +79,23 @@ describe('Admin project and survey management', () => {
     surveyId = createSurveyResponse.body.record.id;
     expect(createSurveyResponse.body.wasCreated).toBe(true);
 
+    const completeAnswers: SurveyAnswers = {
+      projectRecommendation: 8,
+      projectImprovement: 'Ship faster',
+      managerEffectiveness: 7,
+      managerImprovement: 'Improve planning',
+      teamComfort: 9,
+      teamImprovement: 'More team events',
+      processOrganization: 6,
+      processObstacles: 'Legacy tools',
+      contributionValued: 'partial',
+      improvementIdeas: 'Invest in automation',
+    };
+
     await request(app)
       .patch(`/api/surveys/${surveyId}`)
       .set(debugHeaders)
-      .send({ projectRecommendation: 8, managerEffectiveness: 7 })
+      .send(completeAnswers)
       .expect(200);
   });
 

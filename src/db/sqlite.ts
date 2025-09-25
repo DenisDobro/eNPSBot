@@ -45,6 +45,24 @@ const surveyFieldToColumn: Record<keyof SurveyAnswers, string> = {
   improvementIdeas: 'improvement_ideas',
 };
 
+const completedSurveyColumns = [
+  'project_recommendation',
+  'project_improvement',
+  'manager_effectiveness',
+  'manager_improvement',
+  'team_comfort',
+  'team_improvement',
+  'process_organization',
+  'process_obstacles',
+  'contribution_valued',
+  'improvement_ideas',
+] as const;
+
+function completedSurveyCondition(alias?: string): string {
+  const prefix = alias ? `${alias}.` : '';
+  return completedSurveyColumns.map((column) => `${prefix}${column} IS NOT NULL`).join(' AND ');
+}
+
 export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
   const dbDir = path.dirname(databaseFile);
   if (!fs.existsSync(dbDir)) {
@@ -321,12 +339,12 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
         (
           SELECT COUNT(1)
           FROM surveys s
-          WHERE s.project_id = p.id
+          WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
         ) AS responsesCount,
         (
           SELECT MAX(s.created_at)
           FROM surveys s
-          WHERE s.project_id = p.id
+          WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
         ) AS lastResponseAt
       FROM projects p
       ${whereClause}
@@ -352,7 +370,7 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
              COUNT(1) as responsesCount,
              MAX(created_at) as lastResponseAt
            FROM surveys
-           WHERE project_id = ?`,
+           WHERE project_id = ? AND ${completedSurveyCondition()}`,
         )
         .get(existing.id) as { responsesCount: number; lastResponseAt: string | null } | undefined;
 
@@ -386,15 +404,15 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
   async function listProjectsById(id: number): Promise<ProjectSummary> {
     return db
       .prepare(
-        `SELECT
+         `SELECT
            p.id,
            p.name,
            p.created_at AS createdAt,
            (
-             SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id
+             SELECT COUNT(1) FROM surveys s WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
            ) AS responsesCount,
            (
-             SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id
+             SELECT MAX(created_at) FROM surveys s WHERE s.project_id = p.id AND ${completedSurveyCondition('s')}
            ) AS lastResponseAt
          FROM projects p
          WHERE p.id = ?`,
@@ -614,7 +632,7 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
            SUM(CASE WHEN s.contribution_valued = 'partial' THEN 1 ELSE 0 END) AS contributionPartial,
            SUM(CASE WHEN s.contribution_valued = 'no' THEN 1 ELSE 0 END) AS contributionNo
          FROM projects p
-         LEFT JOIN surveys s ON s.project_id = p.id
+         LEFT JOIN surveys s ON s.project_id = p.id AND ${completedSurveyCondition('s')}
          GROUP BY p.id
          ORDER BY COALESCE(MAX(s.created_at), p.created_at) DESC`);
 
@@ -660,9 +678,9 @@ export function createSqliteAdapter(databaseFile: string): DatabaseAdapter {
            u.last_name,
            u.username
          FROM surveys s
-         JOIN projects p ON p.id = s.project_id
-         JOIN users u ON u.id = s.user_id
-         WHERE s.project_id = ?
+          JOIN projects p ON p.id = s.project_id
+          JOIN users u ON u.id = s.user_id
+         WHERE s.project_id = ? AND ${completedSurveyCondition('s')}
          ORDER BY s.created_at DESC`,
       )
       .all(projectId) as Array<SurveyRow & { first_name: string; last_name: string | null; username: string | null }>;
