@@ -228,7 +228,11 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
         ) AS "lastResponseAt"
       FROM projects p
       ${whereClause}
-      ORDER BY COALESCE("lastResponseAt", p.created_at) DESC
+      ORDER BY COALESCE((
+        SELECT MAX(s.created_at)
+        FROM surveys s
+        WHERE s.project_id = p.id
+      ), p.created_at) DESC
       LIMIT ${limitParam}
     `;
 
