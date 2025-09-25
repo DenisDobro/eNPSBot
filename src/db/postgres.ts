@@ -168,6 +168,7 @@ export function createPostgresAdapter(databaseUrl: string): DatabaseAdapter {
       );
 
       CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
+      CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by);
       CREATE INDEX IF NOT EXISTS idx_surveys_user_project ON surveys(user_id, project_id, survey_date);
       CREATE INDEX IF NOT EXISTS idx_surveys_project_created_at ON surveys(project_id, created_at);
     `);
