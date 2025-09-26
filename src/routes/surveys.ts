@@ -14,7 +14,7 @@ const createSchema = z.object({
 });
 
 const ratingField = z.number().int().min(0).max(10);
-const textField = z.string().max(2000).optional();
+const textField = z.string().max(10000).optional();
 
 const updateSchema = z.object({
   projectRecommendation: ratingField.optional(),
