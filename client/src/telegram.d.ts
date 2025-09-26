@@ -14,6 +14,18 @@ declare global {
         colorScheme?: 'light' | 'dark' | string;
         setBackgroundColor?: (color: string) => void;
         setHeaderColor?: (color: string) => void;
+        safeAreaInset?: {
+          top?: number;
+          bottom?: number;
+          left?: number;
+          right?: number;
+        };
+        contentSafeAreaInset?: {
+          top?: number;
+          bottom?: number;
+          left?: number;
+          right?: number;
+        };
         onEvent?: (eventType: string, handler: () => void) => void;
         offEvent?: (eventType: string, handler: () => void) => void;
 

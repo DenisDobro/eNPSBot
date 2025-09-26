@@ -259,6 +259,48 @@ function useMetalampTheme(): {
   return { theme, preference, setPreference };
 }
 
+function useTelegramSafeArea(): void {
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) {
+      return;
+    }
+
+    const root = document.documentElement;
+    const applySafeArea = () => {
+      const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
+      if (!insets) {
+        return;
+      }
+
+      const top = typeof insets.top === 'number' ? Math.max(0, insets.top) : null;
+      const bottom = typeof insets.bottom === 'number' ? Math.max(0, insets.bottom) : null;
+
+      if (top !== null) {
+        root.style.setProperty('--runtime-safe-area-top', `${top}px`);
+      }
+
+      if (bottom !== null) {
+        root.style.setProperty('--runtime-safe-area-bottom', `${bottom}px`);
+      }
+    };
+
+    applySafeArea();
+
+    webApp.onEvent?.('safeAreaChanged', applySafeArea);
+    webApp.onEvent?.('contentSafeAreaChanged', applySafeArea);
+
+    return () => {
+      webApp.offEvent?.('safeAreaChanged', applySafeArea);
+      webApp.offEvent?.('contentSafeAreaChanged', applySafeArea);
+    };
+  }, []);
+}
+
 function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; ready: boolean } {
   const [auth, setAuth] = useState<ApiAuthContext>({ initDataRaw: null, debugUser: null });
   const [user, setUser] = useState<TelegramUser | null>(null);
@@ -297,6 +339,7 @@ function normalizeAnswersFromSurvey(survey: SurveyRecord): SurveyAnswers {
 
 export default function App(): JSX.Element {
   const { theme, preference, setPreference } = useMetalampTheme();
+  useTelegramSafeArea();
 
   const { auth, user, ready } = useTelegramUser();
 
