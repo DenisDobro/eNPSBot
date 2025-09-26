@@ -10,6 +10,9 @@ import { createSqliteAdapter } from './sqlite';
 import { createPostgresAdapter } from './postgres';
 import { SurveyAnswers, SurveyRecord, TelegramUser } from '../types';
 
+const DEFAULT_INIT_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 750;
+
 let adapter: DatabaseAdapter | null = null;
 
 function requireAdapter(): DatabaseAdapter {
@@ -20,6 +23,35 @@ function requireAdapter(): DatabaseAdapter {
   return adapter;
 }
 
+async function sleep(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function initWithRetry(db: DatabaseAdapter, attempts = DEFAULT_INIT_ATTEMPTS): Promise<void> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await db.init();
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < attempts) {
+        const backoff = RETRY_BASE_DELAY_MS * attempt;
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Database init attempt ${attempt} failed. Retrying in ${backoff}ms...`,
+          error,
+        );
+        await sleep(backoff);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function createAdapter(): Promise<void> {
   if (adapter) {
     return;
@@ -28,7 +60,7 @@ async function createAdapter(): Promise<void> {
   if (config.databaseUrl) {
     const postgres = createPostgresAdapter(config.databaseUrl);
     try {
-      await postgres.init();
+      await initWithRetry(postgres);
       adapter = postgres;
       return;
     } catch (error) {
@@ -44,7 +76,7 @@ async function createAdapter(): Promise<void> {
   if (config.useSupabaseDefault) {
     const supabase = createPostgresAdapter(config.supabaseDefaultUrl);
     try {
-      await supabase.init();
+      await initWithRetry(supabase);
       adapter = supabase;
       return;
     } catch (error) {
