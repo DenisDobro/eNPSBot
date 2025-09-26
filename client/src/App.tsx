@@ -273,19 +273,18 @@ function useTelegramSafeArea(): void {
     const root = document.documentElement;
     const applySafeArea = () => {
       const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
-      if (!insets) {
-        return;
-      }
+      const MIN_TOP_INSET = 64;
 
-      const top = typeof insets.top === 'number' ? Math.max(0, insets.top) : null;
-      const bottom = typeof insets.bottom === 'number' ? Math.max(0, insets.bottom) : null;
+      const rawTop = typeof insets?.top === 'number' ? Math.max(0, insets.top) : null;
+      const rawBottom = typeof insets?.bottom === 'number' ? Math.max(0, insets.bottom) : null;
 
-      if (top !== null) {
-        root.style.setProperty('--runtime-safe-area-top', `${top}px`);
-      }
+      const resolvedTop = Math.max(rawTop ?? 0, MIN_TOP_INSET);
+      const resolvedBottom = rawBottom ?? null;
 
-      if (bottom !== null) {
-        root.style.setProperty('--runtime-safe-area-bottom', `${bottom}px`);
+      root.style.setProperty('--runtime-safe-area-top', `${resolvedTop}px`);
+
+      if (resolvedBottom !== null) {
+        root.style.setProperty('--runtime-safe-area-bottom', `${resolvedBottom}px`);
       }
     };
 
