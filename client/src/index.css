@@ -63,7 +63,22 @@
   --success-text: #41d98c;
   --danger-text: #ff9b7b;
   --divider: rgba(255, 255, 255, 0.08);
+  --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
+}
 
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root {
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@supports (padding-top: constant(safe-area-inset-top)) {
+  :root {
+    --safe-area-top: constant(safe-area-inset-top);
+    --safe-area-bottom: constant(safe-area-inset-bottom);
+  }
 }
 
 body {

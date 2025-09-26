@@ -1,7 +1,9 @@
 .app {
   position: relative;
   min-height: 100vh;
-  padding: clamp(32px, 6vw, 72px) 0 96px;
+  padding-inline: 0;
+  padding-top: calc(clamp(32px, 6vw, 72px) + var(--safe-area-top));
+  padding-bottom: calc(96px + var(--safe-area-bottom));
   display: flex;
   justify-content: center;
   color: var(--text-primary);
@@ -9,7 +11,7 @@
 }
 
 .app--survey-active {
-  padding: clamp(32px, 6vw, 72px) 0;
+  padding-bottom: var(--safe-area-bottom);
 }
 
 .app-gradient {
