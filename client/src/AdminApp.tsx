@@ -775,52 +775,58 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
             <h1 className="app-title">Проектный офис</h1>
             <p className="app-subtitle">Аналитика по проектам и обратной связи команды в реальном времени.</p>
           </div>
-          <div className="admin-header__actions">
-            <div className="admin-header__toolbar" role="group" aria-label="Управление админкой">
-              <button
-                type="button"
-                className="icon-button"
-                onClick={handleBackToUser}
-                aria-label="Перейти в режим пользователя"
-                title="Перейти в режим пользователя"
-              >
-                <span className="icon-button__glyph" aria-hidden="true">
-                  <ProfileIcon />
-                </span>
-              </button>
-              <ThemeToggle
-                theme={theme}
-                preference={preference}
-                onPreferenceChange={handleThemePreferenceChange}
-              />
-            </div>
-            <div className="admin-header__buttons">
-              <button
-                type="button"
-                className="button button--ghost admin-header__button"
-                onClick={handleOpenInBrowser}
-                disabled={!token}
-              >
-                <span className="admin-header__button-icon" aria-hidden="true">
-                  <ExternalLinkIcon />
-                </span>
-                <span className="admin-header__button-label">Просмотреть в браузере</span>
-              </button>
-              <button
-                type="button"
-                className="button button--ghost admin-header__button"
-                onClick={() => {
-                  debugTokenAttemptedRef.current = false;
-                  setToken(null);
-                  setTokenInput('');
-                }}
-              >
-                <span className="admin-header__button-icon" aria-hidden="true">
-                  <KeyIcon />
-                </span>
-                <span className="admin-header__button-label">Сменить токен</span>
-              </button>
-            </div>
+          <div className="admin-header__toolbar" role="group" aria-label="Управление админкой">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={handleBackToUser}
+              aria-label="Перейти в режим пользователя"
+              title="Перейти в режим пользователя"
+            >
+              <span className="icon-button__glyph" aria-hidden="true">
+                <ProfileIcon />
+              </span>
+            </button>
+            <ThemeToggle
+              theme={theme}
+              preference={preference}
+              onPreferenceChange={handleThemePreferenceChange}
+            />
+            <button
+              type="button"
+              className="icon-button"
+              onClick={handleOpenInBrowser}
+              disabled={!token}
+              aria-label={
+                token
+                  ? 'Открыть админку в браузере'
+                  : 'Открытие в браузере доступно после ввода токена'
+              }
+              title={
+                token
+                  ? 'Открыть админку в браузере'
+                  : 'Открытие в браузере доступно после ввода токена'
+              }
+            >
+              <span className="icon-button__glyph" aria-hidden="true">
+                <ExternalLinkIcon />
+              </span>
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => {
+                debugTokenAttemptedRef.current = false;
+                setToken(null);
+                setTokenInput('');
+              }}
+              aria-label="Сменить токен доступа"
+              title="Сменить токен доступа"
+            >
+              <span className="icon-button__glyph" aria-hidden="true">
+                <KeyIcon />
+              </span>
+            </button>
           </div>
         </header>
         {projectsError && <div className="banner banner--error">{projectsError}</div>}

@@ -102,6 +102,14 @@
   transition: border 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
+.icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  transform: none;
+}
+
 .icon-button:hover,
 .theme-toggle--open .icon-button {
   border-color: var(--card-border-hover);

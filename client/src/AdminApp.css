@@ -12,8 +12,9 @@
 
 .admin-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 18px;
   margin-bottom: 20px;
 }
@@ -22,57 +23,18 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 320px;
   max-width: 620px;
-}
-
-.admin-header__actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
+  min-width: 240px;
 }
 
 .admin-header__toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.admin-header__buttons {
-  display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-}
-
-.admin-header__button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 16px;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.admin-header__button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 32px rgba(13, 19, 48, 0.16);
-}
-
-.admin-header__button-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.admin-header__button-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.admin-header__button-label {
-  white-space: nowrap;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
 .admin-overview {
@@ -518,18 +480,7 @@
     gap: 16px;
   }
 
-  .admin-header__actions {
-    width: 100%;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
   .admin-header__toolbar {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .admin-header__buttons {
     width: 100%;
     justify-content: flex-start;
   }
