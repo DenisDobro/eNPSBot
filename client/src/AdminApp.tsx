@@ -15,6 +15,9 @@ import {
 import type { AdminProjectStats, AdminSurveyRecord, SurveyAnswers } from './types';
 import type { QuestionConfig } from './components/SurveyStepper';
 import SurveyInlineEditor from './components/SurveyInlineEditor';
+import ThemeToggle from './components/ThemeToggle';
+import { ExternalLinkIcon, KeyIcon, ProfileIcon } from './components/icons';
+import { useThemePreference, type ThemePreference } from './hooks/useThemePreference';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -195,6 +198,13 @@ interface AdminAppProps {
 }
 
 export default function AdminApp({ initialToken = null, embedded = false, onTokenChange, onBackToUser }: AdminAppProps) {
+  const { theme, preference, setPreference } = useThemePreference();
+  const handleThemePreferenceChange = useCallback(
+    (value: ThemePreference) => {
+      setPreference(value);
+    },
+    [setPreference],
+  );
   const storageEnabled = !embedded;
   const [token, setToken] = useState<string | null>(() => {
     if (initialToken && initialToken.trim()) {
@@ -766,28 +776,51 @@ export default function AdminApp({ initialToken = null, embedded = false, onToke
             <p className="app-subtitle">Аналитика по проектам и обратной связи команды в реальном времени.</p>
           </div>
           <div className="admin-header__actions">
-            <button type="button" className="button button--ghost" onClick={handleBackToUser}>
-              Режим пользователя
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={handleOpenInBrowser}
-              disabled={!token}
-            >
-              Просмотреть в браузере
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => {
-                debugTokenAttemptedRef.current = false;
-                setToken(null);
-                setTokenInput('');
-              }}
-            >
-              Сменить токен
-            </button>
+            <div className="admin-header__toolbar" role="group" aria-label="Управление админкой">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={handleBackToUser}
+                aria-label="Перейти в режим пользователя"
+                title="Перейти в режим пользователя"
+              >
+                <span className="icon-button__glyph" aria-hidden="true">
+                  <ProfileIcon />
+                </span>
+              </button>
+              <ThemeToggle
+                theme={theme}
+                preference={preference}
+                onPreferenceChange={handleThemePreferenceChange}
+              />
+            </div>
+            <div className="admin-header__buttons">
+              <button
+                type="button"
+                className="button button--ghost admin-header__button"
+                onClick={handleOpenInBrowser}
+                disabled={!token}
+              >
+                <span className="admin-header__button-icon" aria-hidden="true">
+                  <ExternalLinkIcon />
+                </span>
+                <span className="admin-header__button-label">Просмотреть в браузере</span>
+              </button>
+              <button
+                type="button"
+                className="button button--ghost admin-header__button"
+                onClick={() => {
+                  debugTokenAttemptedRef.current = false;
+                  setToken(null);
+                  setTokenInput('');
+                }}
+              >
+                <span className="admin-header__button-icon" aria-hidden="true">
+                  <KeyIcon />
+                </span>
+                <span className="admin-header__button-label">Сменить токен</span>
+              </button>
+            </div>
           </div>
         </header>
         {projectsError && <div className="banner banner--error">{projectsError}</div>}

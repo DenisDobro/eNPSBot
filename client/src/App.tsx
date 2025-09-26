@@ -3,68 +3,15 @@ import type { JSX } from 'react';
 import './App.css';
 import { createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
+import ThemeToggle from './components/ThemeToggle';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ResponsesList } from './components/ResponsesList';
+import { ProfileIcon } from './components/icons';
 import { SurveyStepper, type QuestionConfig, type QuestionKey } from './components/SurveyStepper';
+import { useThemePreference, type ThemePreference } from './hooks/useThemePreference';
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
-type ThemeMode = 'light' | 'dark';
-type ThemePreference = 'system' | ThemeMode;
-
 type AppView = 'dashboard' | 'history';
-
-type IconProps = { className?: string };
-
-const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
-  dark: { background: '#080F2B', header: '#101940' },
-  light: { background: '#F6F7FB', header: '#FFFFFF' },
-};
-
-function SunIcon({ className }: IconProps): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
-      <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M12 3.5v2.2m0 12.6v2.2m8.5-8.5h-2.2M5.7 12H3.5m13.02 6.02-1.56-1.56M8.54 8.54 6.98 6.98m0 10.04 1.56-1.56m8.96-8.96-1.56 1.56"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
-function MoonIcon({ className }: IconProps): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
-      <path
-        d="M21 12.8A8.6 8.6 0 0 1 11.2 3a7.4 7.4 0 1 0 9.8 9.8Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
-function ProfileIcon({ className }: IconProps): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
-      <circle cx="12" cy="9" r="4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M6.2 19.5a6.5 6.5 0 1 1 11.6 0"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
 
 const QUESTION_CONFIG: QuestionConfig[] = [
   {
@@ -152,111 +99,6 @@ function formatApiError(error: unknown): string {
   }
 
   return message;
-}
-
-function useMetalampTheme(): {
-  theme: ThemeMode;
-  preference: ThemePreference;
-  setPreference: (value: ThemePreference) => void;
-} {
-  const [theme, setTheme] = useState<ThemeMode>('dark');
-  const [preference, setPreferenceState] = useState<ThemePreference>(() => {
-    if (typeof window === 'undefined') {
-      return 'system';
-    }
-
-    const stored = window.localStorage?.getItem('themePreference');
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
-    }
-
-    return 'system';
-  });
-
-  useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
-
-    if (preference === 'light' || preference === 'dark') {
-      setTheme(preference);
-      return undefined;
-    }
-
-    const resolveTheme = (): ThemeMode => {
-      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
-        return webApp.colorScheme;
-      }
-
-      return mediaQuery?.matches ? 'dark' : 'light';
-    };
-
-    setTheme(resolveTheme());
-
-    const handleTelegramTheme = () => {
-      setTheme(resolveTheme());
-    };
-
-    const handleSystemTheme = (event: MediaQueryListEvent) => {
-      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
-        return;
-      }
-
-      setTheme(event.matches ? 'dark' : 'light');
-    };
-
-    if (webApp?.onEvent) {
-      webApp.onEvent('themeChanged', handleTelegramTheme);
-    }
-
-    if (mediaQuery) {
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', handleSystemTheme);
-      } else {
-        mediaQuery.addListener(handleSystemTheme);
-      }
-    }
-
-    return () => {
-      if (webApp?.offEvent) {
-        webApp.offEvent('themeChanged', handleTelegramTheme);
-      }
-
-      if (mediaQuery) {
-        if (mediaQuery.removeEventListener) {
-          mediaQuery.removeEventListener('change', handleSystemTheme);
-        } else {
-          mediaQuery.removeListener(handleSystemTheme);
-        }
-      }
-    };
-  }, [preference]);
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.body.dataset.theme = theme;
-      document.documentElement.style.setProperty('color-scheme', theme);
-    }
-
-    const webApp = window.Telegram?.WebApp;
-    if (webApp) {
-      const palette = TELEGRAM_THEME_COLORS[theme];
-      webApp.setBackgroundColor?.(palette.background);
-      webApp.setHeaderColor?.(palette.header);
-    }
-  }, [theme]);
-
-  const setPreference = useCallback((value: ThemePreference) => {
-    setPreferenceState(value);
-    if (typeof window !== 'undefined') {
-      window.localStorage?.setItem('themePreference', value);
-    }
-
-    if (value === 'light' || value === 'dark') {
-      setTheme(value);
-    }
-  }, []);
-
-  return { theme, preference, setPreference };
 }
 
 function useTelegramSafeArea(): void {
@@ -366,7 +208,7 @@ function normalizeAnswersFromSurvey(survey: SurveyRecord): SurveyAnswers {
 }
 
 export default function App(): JSX.Element {
-  const { theme, preference, setPreference } = useMetalampTheme();
+  const { theme, preference, setPreference } = useThemePreference();
   useTelegramSafeArea();
 
   const { auth, user, ready } = useTelegramUser();
@@ -390,7 +232,6 @@ export default function App(): JSX.Element {
   const [surveyStarted, setSurveyStarted] = useState(false);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
   const [pendingStartFocus, setPendingStartFocus] = useState(false);
-  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
   const surveyStateRef = useRef({
     started: false,
@@ -398,8 +239,6 @@ export default function App(): JSX.Element {
     currentId: null as number | null,
   });
   const startButtonRef = useRef<HTMLButtonElement | null>(null);
-  const themeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const themeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     surveyStateRef.current = {
@@ -552,60 +391,11 @@ export default function App(): JSX.Element {
     setMenuOpen((value) => !value);
   }, []);
 
-  const toggleThemeMenu = useCallback(() => {
-    setThemeMenuOpen((open) => !open);
-  }, []);
-
-  const closeThemeMenu = useCallback(() => {
-    setThemeMenuOpen(false);
-  }, []);
-
-  useEffect(() => {
-    if (!themeMenuOpen) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) {
-        return;
-      }
-
-      const menu = themeMenuRef.current;
-      const button = themeButtonRef.current;
-      if (menu?.contains(target) || button?.contains(target)) {
-        return;
-      }
-
-      closeThemeMenu();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-
-      event.preventDefault();
-      closeThemeMenu();
-      themeButtonRef.current?.focus({ preventScroll: true });
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [closeThemeMenu, themeMenuOpen]);
-
   const selectThemePreference = useCallback(
     (value: ThemePreference) => {
       setPreference(value);
-      closeThemeMenu();
-      themeButtonRef.current?.focus({ preventScroll: true });
     },
-    [closeThemeMenu, setPreference],
+    [setPreference],
   );
 
   const handleStartSurvey = useCallback(async () => {
@@ -717,35 +507,6 @@ export default function App(): JSX.Element {
     return () => window.clearTimeout(timeoutId);
   }, [currentSurvey, pendingStartFocus, surveyStarted]);
 
-  useEffect(() => {
-    if (!themeMenuOpen) {
-      return;
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (themeButtonRef.current?.contains(target) || themeMenuRef.current?.contains(target)) {
-        return;
-      }
-
-      setThemeMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setThemeMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [themeMenuOpen]);
-
   const submitSurveyDraft = useCallback(
     async (surveyId: number, updates: SurveyAnswers, options?: { notify?: boolean }) => {
       if (!Object.keys(updates).length) {
@@ -823,16 +584,6 @@ export default function App(): JSX.Element {
   }, []);
 
   const focusMode = surveyStarted && currentSurvey;
-
-  const themeLabel = useMemo(() => {
-    if (preference === 'system') {
-      return theme === 'dark' ? 'Как в системе · Тёмная' : 'Как в системе · Светлая';
-    }
-
-    return preference === 'dark' ? 'Тёмная' : 'Светлая';
-  }, [preference, theme]);
-
-  const themeButtonLabel = useMemo(() => `Сменить тему. Сейчас: ${themeLabel}`, [themeLabel]);
 
   const renderDashboard = () => {
     if (!selectedProject) {
@@ -926,65 +677,11 @@ export default function App(): JSX.Element {
           <header className="app-header">
             <div className="app-header__top">
               <div className="app-header__toolbar">
-                <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
-                  <button
-                    type="button"
-                    className="theme-toggle__button icon-button"
-                    onClick={toggleThemeMenu}
-                    aria-haspopup="listbox"
-                    aria-expanded={themeMenuOpen}
-                    ref={themeButtonRef}
-                    aria-label={themeButtonLabel}
-                    title={themeButtonLabel}
-                  >
-                    <span className="icon-button__glyph" aria-hidden="true">
-                      {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
-                    </span>
-                  </button>
-                  {themeMenuOpen && (
-                    <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={preference === 'light'}
-                        className={
-                          preference === 'light'
-                            ? 'theme-toggle__option theme-toggle__option--active'
-                            : 'theme-toggle__option'
-                        }
-                        onClick={() => selectThemePreference('light')}
-                      >
-                        Светлая
-                      </button>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={preference === 'dark'}
-                        className={
-                          preference === 'dark'
-                            ? 'theme-toggle__option theme-toggle__option--active'
-                            : 'theme-toggle__option'
-                        }
-                        onClick={() => selectThemePreference('dark')}
-                      >
-                        Тёмная
-                      </button>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={preference === 'system'}
-                        className={
-                          preference === 'system'
-                            ? 'theme-toggle__option theme-toggle__option--active'
-                            : 'theme-toggle__option'
-                        }
-                        onClick={() => selectThemePreference('system')}
-                      >
-                        Как в системе
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ThemeToggle
+                  theme={theme}
+                  preference={preference}
+                  onPreferenceChange={selectThemePreference}
+                />
               </div>
             </div>
             <div className="app-header__content">
@@ -1064,65 +761,11 @@ export default function App(): JSX.Element {
                   <ProfileIcon />
                 </span>
               </button>
-              <div className={`theme-toggle${themeMenuOpen ? ' theme-toggle--open' : ''}`}>
-                <button
-                  type="button"
-                  className="theme-toggle__button icon-button"
-                  onClick={toggleThemeMenu}
-                  aria-haspopup="listbox"
-                  aria-expanded={themeMenuOpen}
-                  ref={themeButtonRef}
-                  aria-label={themeButtonLabel}
-                  title={themeButtonLabel}
-                >
-                  <span className="icon-button__glyph" aria-hidden="true">
-                    {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
-                  </span>
-                </button>
-                {themeMenuOpen && (
-                  <div className="theme-toggle__menu" role="listbox" ref={themeMenuRef}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'light'}
-                      className={
-                        preference === 'light'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('light')}
-                    >
-                      Светлая
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'dark'}
-                      className={
-                        preference === 'dark'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('dark')}
-                    >
-                      Тёмная
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={preference === 'system'}
-                      className={
-                        preference === 'system'
-                          ? 'theme-toggle__option theme-toggle__option--active'
-                          : 'theme-toggle__option'
-                      }
-                      onClick={() => selectThemePreference('system')}
-                    >
-                      Как в системе
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ThemeToggle
+                theme={theme}
+                preference={preference}
+                onPreferenceChange={selectThemePreference}
+              />
               <button
                 type="button"
                 className="icon-button burger-button"
