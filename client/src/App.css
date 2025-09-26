@@ -63,7 +63,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   row-gap: 8px;
 }
@@ -88,8 +88,8 @@
 }
 
 .icon-button {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 14px;
   border: 1px solid var(--glass-border);
@@ -135,14 +135,14 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 220px;
+  min-width: 184px;
   background: var(--surface-card);
   border: 1px solid var(--card-border);
   border-radius: 16px;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   box-shadow: 0 18px 38px rgba(8, 15, 43, 0.26);
   z-index: 12;
 }
@@ -152,9 +152,11 @@
   background: transparent;
   color: var(--text-primary);
   text-align: left;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 12px;
   font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
@@ -167,6 +169,17 @@
 .theme-toggle__option--active:hover {
   background: var(--chip-background);
   color: var(--accent-color);
+}
+
+@media (max-width: 480px) {
+  .theme-toggle__menu {
+    min-width: 168px;
+    padding: 6px 4px;
+  }
+
+  .theme-toggle__option {
+    padding: 8px 10px;
+  }
 }
 
 .app-title {

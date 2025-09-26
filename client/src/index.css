@@ -79,7 +79,7 @@
     var(--telegram-safe-area-bottom),
     var(--runtime-safe-area-bottom)
   );
-  --app-header-offset: max(112px, clamp(32px, 6vw, 72px));
+  --app-header-offset: clamp(64px, 10vh, 112px);
   --app-safe-area-top: var(--safe-area-top);
   --app-safe-area-bottom: var(--safe-area-bottom);
 }
@@ -91,9 +91,10 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   :root {
-    --app-safe-area-top: max(var(--safe-area-top), 184px);
+    --app-header-offset: clamp(32px, 9vh, 64px);
+    --app-safe-area-top: max(var(--safe-area-top), 120px);
   }
 }
 
