@@ -90,6 +90,12 @@
   }
 }
 
+@media (max-width: 680px) {
+  :root {
+    --app-safe-area-top: max(var(--safe-area-top), 152px);
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;

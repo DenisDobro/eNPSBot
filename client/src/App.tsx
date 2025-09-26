@@ -285,7 +285,7 @@ function useTelegramSafeArea(): void {
       const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
       const platform = webApp.platform;
       const requireMobileInset = platform === 'ios' || platform === 'android' || platform === 'android_x';
-      const MIN_TOP_INSET = requireMobileInset ? 160 : 0;
+      const MIN_TOP_INSET = requireMobileInset ? 208 : 0;
 
       const rawTop = typeof insets?.top === 'number' ? Math.max(0, insets.top) : null;
       const rawBottom = typeof insets?.bottom === 'number' ? Math.max(0, insets.bottom) : null;
