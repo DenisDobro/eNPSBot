@@ -318,27 +318,42 @@
 .menu-panel__item {
   width: 100%;
   border: 1px solid var(--card-border);
-  border-radius: 14px;
-  background: var(--surface-muted);
+  border-radius: 16px;
+  background: var(--surface-card);
   padding: 14px 18px;
   font-size: 16px;
   font-weight: 600;
   text-align: left;
   color: var(--text-primary);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease,
+    color 0.2s ease;
 }
 
 .menu-panel__item:hover {
   transform: translateY(-1px);
-  border-color: rgba(108, 56, 255, 0.55);
-  box-shadow: 0 12px 24px rgba(12, 16, 46, 0.18);
+  border-color: var(--card-border-hover);
+  background: var(--surface-card-hover);
+  box-shadow: var(--card-shadow-hover);
 }
 
-.menu-panel__item--active {
-  background: linear-gradient(135deg, rgba(108, 56, 255, 0.9) 0%, rgba(34, 228, 253, 0.95) 100%);
-  color: #0a0730;
+.menu-panel__item:focus-visible {
+  outline: 0;
+  border-color: var(--card-active-border);
+  box-shadow: 0 0 0 3px rgba(255, 163, 0, 0.24);
+}
+
+.menu-panel__item--active,
+.menu-panel__item--active:hover {
+  background: var(--accent-gradient);
+  color: var(--button-text-color);
   border-color: transparent;
+  box-shadow: var(--button-shadow);
+  transform: translateY(-1px);
+}
+
+.menu-panel__item--active:hover {
+  box-shadow: var(--button-hover-shadow);
 }
 
 .banner {
