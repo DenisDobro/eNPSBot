@@ -79,6 +79,7 @@
     var(--telegram-safe-area-bottom),
     var(--runtime-safe-area-bottom)
   );
+  --app-header-offset: max(112px, clamp(32px, 6vw, 72px));
   --app-safe-area-top: var(--safe-area-top);
   --app-safe-area-bottom: var(--safe-area-bottom);
 }
@@ -92,7 +93,7 @@
 
 @media (max-width: 680px) {
   :root {
-    --app-safe-area-top: max(var(--safe-area-top), 152px);
+    --app-safe-area-top: max(var(--safe-area-top), 184px);
   }
 }
 

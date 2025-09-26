@@ -2,7 +2,7 @@
   position: relative;
   min-height: 100vh;
   padding-inline: 0;
-  padding-top: calc(clamp(32px, 6vw, 72px) + var(--app-safe-area-top));
+  padding-top: calc(var(--app-header-offset) + var(--app-safe-area-top));
   padding-bottom: calc(96px + var(--app-safe-area-bottom));
   display: flex;
   justify-content: center;
@@ -48,10 +48,6 @@
 }
 
 @media (max-width: 640px) {
-  .app {
-    padding-top: calc(112px + var(--app-safe-area-top));
-  }
-
   .app-header {
     gap: 24px;
   }
