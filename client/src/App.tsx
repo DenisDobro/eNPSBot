@@ -489,6 +489,45 @@ export default function App(): JSX.Element {
     setThemeMenuOpen(false);
   }, []);
 
+  useEffect(() => {
+    if (!themeMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      const menu = themeMenuRef.current;
+      const button = themeButtonRef.current;
+      if (menu?.contains(target) || button?.contains(target)) {
+        return;
+      }
+
+      closeThemeMenu();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      closeThemeMenu();
+      themeButtonRef.current?.focus({ preventScroll: true });
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeThemeMenu, themeMenuOpen]);
+
   const selectThemePreference = useCallback(
     (value: ThemePreference) => {
       setPreference(value);
