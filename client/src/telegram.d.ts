@@ -26,6 +26,9 @@ declare global {
           left?: number;
           right?: number;
         };
+        platform?: 'ios' | 'android' | 'android_x' | string;
+        viewportHeight?: number;
+        viewportStableHeight?: number;
         onEvent?: (eventType: string, handler: () => void) => void;
         offEvent?: (eventType: string, handler: () => void) => void;
 
