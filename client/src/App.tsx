@@ -273,12 +273,22 @@ function useTelegramSafeArea(): void {
     const root = document.documentElement;
     const applySafeArea = () => {
       const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
-      const MIN_TOP_INSET = 96;
+      const platform = webApp.platform;
+      const requireMobileInset = platform === 'ios' || platform === 'android' || platform === 'android_x';
+      const MIN_TOP_INSET = requireMobileInset ? 120 : 0;
 
       const rawTop = typeof insets?.top === 'number' ? Math.max(0, insets.top) : null;
       const rawBottom = typeof insets?.bottom === 'number' ? Math.max(0, insets.bottom) : null;
 
-      const resolvedTop = Math.max(rawTop ?? 0, MIN_TOP_INSET);
+      const viewport = webApp.viewportStableHeight ?? webApp.viewportHeight;
+      let inferredTop = 0;
+
+      if (typeof viewport === 'number' && viewport > 0) {
+        const diff = Math.max(0, window.innerHeight - viewport);
+        inferredTop = Math.round(diff / 2);
+      }
+
+      const resolvedTop = Math.max(rawTop ?? 0, inferredTop, MIN_TOP_INSET);
       const resolvedBottom = rawBottom ?? null;
 
       root.style.setProperty('--runtime-safe-area-top', `${resolvedTop}px`);
@@ -292,10 +302,12 @@ function useTelegramSafeArea(): void {
 
     webApp.onEvent?.('safeAreaChanged', applySafeArea);
     webApp.onEvent?.('contentSafeAreaChanged', applySafeArea);
+    webApp.onEvent?.('viewportChanged', applySafeArea);
 
     return () => {
       webApp.offEvent?.('safeAreaChanged', applySafeArea);
       webApp.offEvent?.('contentSafeAreaChanged', applySafeArea);
+      webApp.offEvent?.('viewportChanged', applySafeArea);
     };
   }, []);
 }
