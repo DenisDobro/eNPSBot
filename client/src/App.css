@@ -47,6 +47,16 @@
   color: var(--text-primary);
 }
 
+@media (max-width: 640px) {
+  .app {
+    padding-top: calc(112px + var(--safe-area-top));
+  }
+
+  .app-header {
+    gap: 24px;
+  }
+}
+
 .app-header__top {
   display: flex;
   justify-content: flex-end;
