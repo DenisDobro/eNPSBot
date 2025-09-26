@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
 import type { ProjectSummary } from '../types';
 
 interface ProjectSelectorProps {
@@ -8,7 +6,6 @@ interface ProjectSelectorProps {
   search: string;
   onSearchChange: (value: string) => void;
   onSelect: (project: ProjectSummary) => void;
-  onAddProject?: (name: string) => Promise<void>;
   isLoading: boolean;
   error?: string | null;
 }
@@ -19,38 +16,9 @@ export function ProjectSelector({
   search,
   onSearchChange,
   onSelect,
-  onAddProject,
   isLoading,
   error,
 }: ProjectSelectorProps) {
-  const [projectName, setProjectName] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-
-  const handleAddProject = async (event: FormEvent) => {
-    if (!onAddProject) {
-      return;
-    }
-
-    event.preventDefault();
-    const trimmed = projectName.trim();
-    if (!trimmed) {
-      setAddError('Введите название проекта');
-      return;
-    }
-
-    setAddError(null);
-    setAdding(true);
-    try {
-      await onAddProject(trimmed);
-      setProjectName('');
-    } catch (err) {
-      setAddError((err as Error).message);
-    } finally {
-      setAdding(false);
-    }
-  };
-
   return (
     <section className="panel">
       <header className="panel-header">
@@ -72,7 +40,7 @@ export function ProjectSelector({
         {isLoading && <div className="hint">Загружаем проекты…</div>}
         {error && <div className="error-message">{error}</div>}
         {!isLoading && !projects.length && !error && (
-          <div className="hint">Проекты не найдены. Добавьте новый проект, чтобы начать.</div>
+          <div className="hint">Проекты не найдены. Попросите администратора добавить новый проект.</div>
         )}
         {projects.map((project) => {
           const isSelected = project.id === selectedProjectId;
@@ -96,32 +64,9 @@ export function ProjectSelector({
           );
         })}
       </div>
-      {onAddProject && (
-        <form className="project-add" onSubmit={handleAddProject}>
-          <label className="project-add__label" htmlFor="new-project">
-            Добавить проект
-          </label>
-          <div className="project-add__controls">
-            <input
-              id="new-project"
-              type="text"
-              value={projectName}
-              className="input"
-              onChange={(event) => setProjectName(event.target.value)}
-              placeholder="Название проекта"
-              disabled={adding}
-            />
-            <button type="submit" className="button" disabled={adding}>
-              {adding ? 'Сохраняем…' : 'Добавить'}
-            </button>
-          </div>
-          {(addError || (!projects.length && !isLoading)) && (
-            <p className={`form-hint ${addError ? 'error-message' : 'hint'}`}>
-              {addError ?? 'Добавьте проект, чтобы начать собирать обратную связь.'}
-            </p>
-          )}
-        </form>
-      )}
+      <p className="hint">
+        Не нашли свой проект? Свяжитесь с проектным офисом, чтобы добавить его в список.
+      </p>
     </section>
   );
 }

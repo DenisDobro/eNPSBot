@@ -3,17 +3,7 @@ import { config } from './config';
 import { initDB } from './db';
 
 async function bootstrap(): Promise<void> {
-  try {
-    await initDB();
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(
-      'Failed to initialise database. Check DATABASE_URL or PG* credentials. Original error:',
-      error instanceof Error ? error.message : error,
-    );
-    process.exit(1);
-  }
-
+  await initDB();
   const app = createApp();
 
   app.listen(config.port, () => {
@@ -22,4 +12,8 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-void bootstrap();
+void bootstrap().catch((error) => {
+  // eslint-disable-next-line no-console
+  console.error('Failed to start application', error);
+  process.exit(1);
+});

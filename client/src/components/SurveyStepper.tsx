@@ -93,6 +93,28 @@ export function SurveyStepper({
     [activeStep, isSubmitting, onAnswer, onStepChange, question],
   );
 
+  const handleScaleSelect = useCallback(
+    (value: number) => {
+      if (!question || question.type !== 'scale') {
+        return;
+      }
+
+      commitAnswer(value);
+    },
+    [commitAnswer, question],
+  );
+
+  const handleOptionSelect = useCallback(
+    (value: ContributionValue) => {
+      if (!question || question.type !== 'options') {
+        return;
+      }
+
+      commitAnswer(value);
+    },
+    [commitAnswer, question],
+  );
+
   const handleTextSubmit = useCallback(() => {
     if (!question || question.type !== 'text' || isSubmitting) {
       return;
@@ -179,7 +201,7 @@ export function SurveyStepper({
         <div>
           <h2>{survey.projectName}</h2>
           <p className="panel-subtitle">
-            Шаг {activeStep + 1} из {questions.length}. Ответы сохраняются локально до отправки анкеты.
+            Шаг {activeStep + 1} из {questions.length}. Ответы сохранятся после завершения анкеты.
           </p>
         </div>
         <div className="progress">
@@ -200,7 +222,7 @@ export function SurveyStepper({
                     key={score}
                     type="button"
                     className={`scale-selector__item ${isActive ? 'scale-selector__item--active' : ''}`}
-                    onClick={() => commitAnswer(score)}
+                    onClick={() => handleScaleSelect(score)}
                     disabled={isSubmitting}
                   >
                     {score}
@@ -211,7 +233,7 @@ export function SurveyStepper({
           )}
 
           {question.type === 'options' && question.options && (
-            <div className="options-list">
+            <div className="options-selector">
               {question.options.map((option) => {
                 const isActive = currentValue === option.value;
                 return (
@@ -219,7 +241,7 @@ export function SurveyStepper({
                     key={option.value}
                     type="button"
                     className={`option-chip ${isActive ? 'option-chip--active' : ''}`}
-                    onClick={() => commitAnswer(option.value)}
+                    onClick={() => handleOptionSelect(option.value)}
                     disabled={isSubmitting}
                   >
                     {option.label}
@@ -230,28 +252,34 @@ export function SurveyStepper({
           )}
 
           {question.type === 'text' && (
-            <form
-              className="text-answer"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleTextSubmit();
-              }}
-            >
+            <div className="text-answer">
               <textarea
+                className="textarea"
+                placeholder={question.placeholder}
                 value={typeof currentValue === 'string' ? currentValue : ''}
-                placeholder={question.placeholder ?? 'Введите ответ'}
                 onChange={(event) => {
                   setCurrentValue(event.target.value);
                   setFieldError(null);
                 }}
                 disabled={isSubmitting}
               />
-              {fieldError && <p className="error-message">{fieldError}</p>}
-              <button type="submit" className="button" disabled={isSubmitting}>
-                {isSubmitting ? 'Сохраняем…' : 'Продолжить'}
+              <button type="button" className="button" onClick={handleTextSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Сохраняем…' : 'Сохранить ответ'}
               </button>
-            </form>
+              {fieldError && <p className="error-message">{fieldError}</p>}
+            </div>
           )}
+        </div>
+        <div className="question-footer">
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => onStepChange(Math.max(0, activeStep - 1))}
+            disabled={isSubmitting || activeStep === 0}
+          >
+            Назад
+          </button>
+          <p className="deadline-hint">Можно изменить ответы до {completionDeadline}</p>
         </div>
       </div>
     </section>

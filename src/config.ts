@@ -1,47 +1,25 @@
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
 
-function buildDatabaseUrlFromParts(): string | null {
-  const host = process.env.PGHOST ?? process.env.POSTGRES_HOST ?? null;
-  const user = process.env.PGUSER ?? process.env.POSTGRES_USER ?? 'postgres';
-  const password = process.env.PGPASSWORD ?? process.env.POSTGRES_PASSWORD ?? null;
-  const database = process.env.PGDATABASE ?? process.env.POSTGRES_DB ?? 'postgres';
-  const port = process.env.PGPORT ?? process.env.POSTGRES_PORT ?? '5432';
+const ROOT_DIR = path.resolve(__dirname, '..');
+const DEFAULT_DB_PATH = path.resolve(ROOT_DIR, 'data', 'enps.sqlite');
+const DEFAULT_SUPABASE_URL =
+  'postgresql://postgres.xaprakcfyozyquooagez:MetaLampPMO@aws-1-us-east-2.pooler.supabase.com:6543/postgres';
 
-  if (!host || !password) {
-    return null;
-  }
-
-  const encodedPassword = encodeURIComponent(password);
-  const sslMode = process.env.PGSSLMODE ?? 'require';
-
-  return `postgresql://${user}:${encodedPassword}@${host}:${port}/${database}?sslmode=${sslMode}`;
-}
-
-function resolveDatabaseUrl(): string {
-  const fromEnv = process.env.DATABASE_URL?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
-
-  const fromParts = buildDatabaseUrlFromParts();
-  if (fromParts) {
-    return fromParts;
-  }
-
-  const supabase = process.env.SUPABASE_DB_URL?.trim() ?? process.env.SUPABASE_DB_CONNECTION_STRING?.trim();
-  if (supabase) {
-    return supabase;
-  }
-
-  return '';
-}
+const envDatabaseUrl = process.env.DATABASE_URL;
+const useSupabaseDefault = process.env.USE_SUPABASE_DEFAULT !== 'false';
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   botToken: process.env.BOT_TOKEN ?? '',
-  databaseUrl: resolveDatabaseUrl(),
+  databaseFile: process.env.DATABASE_FILE
+    ? path.resolve(ROOT_DIR, process.env.DATABASE_FILE)
+    : DEFAULT_DB_PATH,
+  databaseUrl: envDatabaseUrl ?? '',
+  supabaseDefaultUrl: DEFAULT_SUPABASE_URL,
+  useSupabaseDefault,
   allowInsecureInitData: process.env.ALLOW_INSECURE_INIT_DATA === 'true',
   serveFrontend: process.env.SERVE_FRONTEND !== 'false',
   adminToken: process.env.ADMIN_TOKEN ?? '',

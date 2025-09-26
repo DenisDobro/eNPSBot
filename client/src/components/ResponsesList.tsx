@@ -11,7 +11,9 @@ interface ResponsesListProps {
   onCancelEdit: () => void;
   onSubmitDraft: (surveyId: number, updates: SurveyAnswers) => Promise<void>;
   isSaving: boolean;
+
   projectName?: string;
+
 }
 
 function formatDate(date: string): string {
@@ -30,6 +32,7 @@ function RatingRow({ label, value }: { label: string; value?: number }) {
     </div>
   );
 }
+
 
 type RatingKey = 'projectRecommendation' | 'managerEffectiveness' | 'teamComfort' | 'processOrganization';
 
@@ -52,6 +55,7 @@ function calculateAverage(values: Array<number | undefined>): number | null {
   return total / filtered.length;
 }
 
+
 export function ResponsesList({
   surveys,
   onEdit,
@@ -61,6 +65,7 @@ export function ResponsesList({
   onCancelEdit,
   onSubmitDraft,
   isSaving,
+
   projectName,
 }: ResponsesListProps) {
   const ratingStats = RATING_FIELDS.map((field) => ({
@@ -80,11 +85,13 @@ export function ResponsesList({
 
   const totalContributionResponses = contributionStats.yes + contributionStats.partial + contributionStats.no;
 
+
   return (
     <section className="panel">
       <header className="panel-header">
         <div>
           <h2>История ответов</h2>
+
           <p className="panel-subtitle">
             Вы видите только свои ответы. Каждый ответ вы можете отредактировать в течение 1 дня.
           </p>
@@ -132,14 +139,16 @@ export function ResponsesList({
             </div>
           </div>
         )}
+
         {isLoading && <div className="hint">Загружаем историю…</div>}
         {!isLoading && surveys.length === 0 && <div className="hint">Пока нет заполненных анкет.</div>}
         {surveys.map((survey) => {
           const updated = formatDate(survey.updatedAt);
           const isEditing = editingSurveyId === survey.id;
+          const cardClassName = `response-card${survey.isComplete ? '' : ' response-card--incomplete'}`;
 
           return (
-            <article key={survey.id} className="response-card">
+            <article key={survey.id} className={cardClassName}>
               {isEditing ? (
                 <SurveyInlineEditor
                   survey={survey}
@@ -155,7 +164,17 @@ export function ResponsesList({
                     <span className="response-card__meta">Обновлено: {updated}</span>
                   </header>
                   <div className="response-card__content">
+                    {!survey.isComplete && (
+                      <div className="response-card__status" role="note">
+                        <span className="response-card__status-icon" aria-hidden="true">
+                          ⚠️
+                        </span>
+                        <span>Анкета заполнена не полностью — ответы не учитываются в статистике.</span>
+                      </div>
+                    )}
+
                     <span className="response-card__project">{survey.projectName}</span>
+
                     <div className="response-card__ratings">
                       <RatingRow label="Проект" value={survey.projectRecommendation} />
                       <RatingRow label="Менеджер" value={survey.managerEffectiveness} />

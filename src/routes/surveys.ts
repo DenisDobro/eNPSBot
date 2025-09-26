@@ -14,7 +14,7 @@ const createSchema = z.object({
 });
 
 const ratingField = z.number().int().min(0).max(10);
-const textField = z.string().max(2000).optional();
+const textField = z.string().max(10000).optional();
 
 const updateSchema = z.object({
   projectRecommendation: ratingField.optional(),
@@ -39,12 +39,8 @@ router.get('/', async (req, res) => {
   const projectIdParam = typeof req.query.projectId === 'string' ? Number(req.query.projectId) : undefined;
   const projectId = Number.isFinite(projectIdParam) ? projectIdParam : undefined;
 
-  try {
-    const surveys = await listSurveys(user.id, projectId);
-    res.json({ surveys });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
+  const surveys = await listSurveys(user.id, projectId);
+  res.json({ surveys });
 });
 
 router.get('/:id', async (req, res) => {
@@ -60,17 +56,13 @@ router.get('/:id', async (req, res) => {
     return;
   }
 
-  try {
-    const survey = await getSurveyById(id, user.id);
-    if (!survey) {
-      res.status(404).json({ error: 'Survey not found' });
-      return;
-    }
-
-    res.json({ survey });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+  const survey = await getSurveyById(id, user.id);
+  if (!survey) {
+    res.status(404).json({ error: 'Survey not found' });
+    return;
   }
+
+  res.json({ survey });
 });
 
 router.post('/', async (req, res) => {

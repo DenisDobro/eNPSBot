@@ -3,19 +3,15 @@ import type { JSX } from 'react';
 import './App.css';
 import { createSurveyRequest, fetchProjects, fetchSurveys, updateSurveyRequest } from './api';
 import type { ApiAuthContext } from './api';
+import ThemeToggle from './components/ThemeToggle';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ResponsesList } from './components/ResponsesList';
+import { ProfileIcon } from './components/icons';
 import { SurveyStepper, type QuestionConfig, type QuestionKey } from './components/SurveyStepper';
+import { useThemePreference, type ThemePreference } from './hooks/useThemePreference';
 import type { ProjectSummary, SurveyAnswers, SurveyRecord, TelegramUser } from './types';
 
-type ThemeMode = 'light' | 'dark';
-
 type AppView = 'dashboard' | 'history';
-
-const TELEGRAM_THEME_COLORS: Record<ThemeMode, { background: string; header: string }> = {
-  dark: { background: '#080F2B', header: '#101940' },
-  light: { background: '#F6F7FB', header: '#FFFFFF' },
-};
 
 const QUESTION_CONFIG: QuestionConfig[] = [
   {
@@ -105,82 +101,76 @@ function formatApiError(error: unknown): string {
   return message;
 }
 
-function useMetalampTheme(): ThemeMode {
-  const [theme, setTheme] = useState<ThemeMode>('dark');
-
+function useTelegramSafeArea(): void {
   useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
-
-    const resolveTheme = (): ThemeMode => {
-      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
-        return webApp.colorScheme;
-      }
-
-      return mediaQuery?.matches ? 'dark' : 'light';
-    };
-
-    const applyTheme = (mode: ThemeMode) => {
-      setTheme(mode);
-      if (typeof document !== 'undefined') {
-        document.body.dataset.theme = mode;
-        document.documentElement.style.setProperty('color-scheme', mode);
-      }
-    };
-
-    applyTheme(resolveTheme());
-
-    const handleTelegramTheme = () => {
-      applyTheme(resolveTheme());
-    };
-
-    const handleSystemTheme = (event: MediaQueryListEvent) => {
-      if (webApp?.colorScheme === 'dark' || webApp?.colorScheme === 'light') {
-        return;
-      }
-
-      applyTheme(event.matches ? 'dark' : 'light');
-    };
-
-    if (webApp?.onEvent) {
-      webApp.onEvent('themeChanged', handleTelegramTheme);
+    if (typeof document === 'undefined') {
+      return;
     }
 
-    if (mediaQuery) {
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', handleSystemTheme);
-      } else {
-        mediaQuery.addListener(handleSystemTheme);
-      }
-    }
-
-    return () => {
-      if (webApp?.offEvent) {
-        webApp.offEvent('themeChanged', handleTelegramTheme);
-      }
-
-      if (mediaQuery) {
-        if (mediaQuery.removeEventListener) {
-          mediaQuery.removeEventListener('change', handleSystemTheme);
-        } else {
-          mediaQuery.removeListener(handleSystemTheme);
-        }
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const webApp = window.Telegram?.WebApp;
     if (!webApp) {
       return;
     }
 
-    const palette = TELEGRAM_THEME_COLORS[theme];
-    webApp.setBackgroundColor?.(palette.background);
-    webApp.setHeaderColor?.(palette.header);
-  }, [theme]);
+    const root = document.documentElement;
 
-  return theme;
+    const parsePxValue = (value: string | null | undefined): number => {
+      if (!value) {
+        return 0;
+      }
+
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const applySafeArea = () => {
+      const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
+      const platform = webApp.platform;
+      const requireMobileInset = platform === 'ios' || platform === 'android' || platform === 'android_x';
+      const compactViewport = window.innerWidth <= 780;
+      const fallbackMobileInset = compactViewport ? 120 : 80;
+      const MIN_TOP_INSET = requireMobileInset ? fallbackMobileInset : 0;
+
+      const rawTop = typeof insets?.top === 'number' ? Math.max(0, insets.top) : null;
+      const rawBottom = typeof insets?.bottom === 'number' ? Math.max(0, insets.bottom) : null;
+
+      const viewport = webApp.viewportStableHeight ?? webApp.viewportHeight;
+      let inferredTop = 0;
+
+      if (typeof viewport === 'number' && viewport > 0) {
+        const diff = Math.max(0, window.innerHeight - viewport);
+        inferredTop = Math.round(diff / 2);
+      }
+
+      const resolvedTop = Math.max(rawTop ?? 0, inferredTop, MIN_TOP_INSET);
+      const styles = window.getComputedStyle(root);
+      const cssSystemTop = parsePxValue(styles.getPropertyValue('--system-safe-area-top'));
+      const cssTelegramTop = parsePxValue(styles.getPropertyValue('--telegram-safe-area-top'));
+      const cssSystemBottom = parsePxValue(styles.getPropertyValue('--system-safe-area-bottom'));
+      const cssTelegramBottom = parsePxValue(styles.getPropertyValue('--telegram-safe-area-bottom'));
+
+      const runtimeTop = Math.max(resolvedTop, cssSystemTop, cssTelegramTop);
+      const resolvedBottom = rawBottom ?? Math.max(cssSystemBottom, cssTelegramBottom);
+      const runtimeBottom = Math.max(resolvedBottom, cssSystemBottom, cssTelegramBottom);
+
+      root.style.setProperty('--runtime-safe-area-top', `${resolvedTop}px`);
+      root.style.setProperty('--app-safe-area-top', `${runtimeTop}px`);
+      root.style.setProperty('--runtime-safe-area-bottom', `${resolvedBottom}px`);
+      root.style.setProperty('--app-safe-area-bottom', `${runtimeBottom}px`);
+    };
+
+    applySafeArea();
+
+    webApp.onEvent?.('safeAreaChanged', applySafeArea);
+    webApp.onEvent?.('contentSafeAreaChanged', applySafeArea);
+    webApp.onEvent?.('viewportChanged', applySafeArea);
+
+    return () => {
+      webApp.offEvent?.('safeAreaChanged', applySafeArea);
+      webApp.offEvent?.('contentSafeAreaChanged', applySafeArea);
+      webApp.offEvent?.('viewportChanged', applySafeArea);
+    };
+  }, []);
 }
 
 function useTelegramUser(): { auth: ApiAuthContext; user: TelegramUser | null; ready: boolean } {
@@ -220,7 +210,8 @@ function normalizeAnswersFromSurvey(survey: SurveyRecord): SurveyAnswers {
 }
 
 export default function App(): JSX.Element {
-  useMetalampTheme();
+  const { theme, preference, setPreference } = useThemePreference();
+  useTelegramSafeArea();
 
   const { auth, user, ready } = useTelegramUser();
 
@@ -242,12 +233,14 @@ export default function App(): JSX.Element {
   const [activeStep, setActiveStep] = useState(0);
   const [surveyStarted, setSurveyStarted] = useState(false);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
+  const [pendingStartFocus, setPendingStartFocus] = useState(false);
 
   const surveyStateRef = useRef({
     started: false,
     submitted: false,
     currentId: null as number | null,
   });
+  const startButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     surveyStateRef.current = {
@@ -391,11 +384,21 @@ export default function App(): JSX.Element {
     setSurveySubmitted(false);
     setEditingSurveyId(null);
     setBanner(null);
+    setPendingStartFocus(true);
+    setView('dashboard');
+    setMenuOpen(false);
   }, []);
 
   const handleToggleMenu = useCallback(() => {
     setMenuOpen((value) => !value);
   }, []);
+
+  const selectThemePreference = useCallback(
+    (value: ThemePreference) => {
+      setPreference(value);
+    },
+    [setPreference],
+  );
 
   const handleStartSurvey = useCallback(async () => {
     if (!selectedProject) {
@@ -475,17 +478,7 @@ export default function App(): JSX.Element {
     } finally {
       setSavingSurvey(false);
     }
-  }, [
-    auth,
-    currentSurvey,
-    draftAnswers,
-    mandatoryKeys,
-    projectSearch,
-    refreshProjects,
-    refreshSurveys,
-    showError,
-    showSuccess,
-  ]);
+  }, [auth, currentSurvey, draftAnswers, mandatoryKeys, projectSearch, refreshProjects, refreshSurveys, showError]);
 
   const handleExitSurvey = useCallback(() => {
     setCurrentSurvey(null);
@@ -498,6 +491,23 @@ export default function App(): JSX.Element {
     setView('history');
     surveyStateRef.current = { started: false, submitted: false, currentId: null };
   }, []);
+
+  useEffect(() => {
+    if (!pendingStartFocus || surveyStarted || currentSurvey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const target = startButtonRef.current;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.focus({ preventScroll: true });
+      }
+      setPendingStartFocus(false);
+    }, 80);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentSurvey, pendingStartFocus, surveyStarted]);
 
   const submitSurveyDraft = useCallback(
     async (surveyId: number, updates: SurveyAnswers, options?: { notify?: boolean }) => {
@@ -530,7 +540,7 @@ export default function App(): JSX.Element {
         setSavingSurvey(false);
       }
     },
-    [auth, projectSearch, refreshProjects, refreshSurveys, showError, showSuccess],
+    [auth, projectSearch, refreshProjects, refreshSurveys, showError],
   );
 
   const handleInlineSubmit = useCallback(
@@ -563,6 +573,14 @@ export default function App(): JSX.Element {
     }
   }, [refreshSurveys, selectedProjectId]);
 
+  const toggleHistoryView = useCallback(() => {
+    if (view === 'history') {
+      openDashboard();
+    } else {
+      openHistory();
+    }
+  }, [openDashboard, openHistory, view]);
+
   const goToAdmin = useCallback(() => {
     window.location.href = '/admin';
   }, []);
@@ -576,7 +594,7 @@ export default function App(): JSX.Element {
           <header className="panel-header">
             <div>
               <h2>Выберите проект</h2>
-              <p className="panel-subtitle">Выберите проект, чтобы начать новую анкету.</p>
+              <p className="panel-subtitle">Выберите проект слева, чтобы начать новую анкету.</p>
             </div>
           </header>
         </section>
@@ -598,7 +616,13 @@ export default function App(): JSX.Element {
             <p className="hint">
               Анкета займёт около 4 минут. Ответы сохранятся только после завершения анкеты.
             </p>
-            <button type="button" className="button" onClick={handleStartSurvey} disabled={creatingSurvey}>
+            <button
+              type="button"
+              className="button"
+              onClick={handleStartSurvey}
+              disabled={creatingSurvey}
+              ref={startButtonRef}
+            >
               {creatingSurvey ? 'Готовим анкету…' : 'Начать тест'}
             </button>
           </div>
@@ -653,11 +677,22 @@ export default function App(): JSX.Element {
         <div className="app-gradient" />
         <div className="app-container">
           <header className="app-header">
-            <div>
-              <h1 className="app-title">Метрика атмосферы</h1>
-              <p className="app-subtitle">
-                Откройте мини-приложение внутри Telegram, чтобы заполнить анкету или посмотреть историю ответов.
-              </p>
+            <div className="app-header__top">
+              <div className="app-header__toolbar">
+                <ThemeToggle
+                  theme={theme}
+                  preference={preference}
+                  onPreferenceChange={selectThemePreference}
+                />
+              </div>
+            </div>
+            <div className="app-header__content">
+              <div className="app-header__titles">
+                <h1 className="app-title">Метрика атмосферы</h1>
+                <p className="app-subtitle">
+                  Откройте мини-приложение внутри Telegram, чтобы заполнить анкету или посмотреть историю ответов.
+                </p>
+              </div>
             </div>
           </header>
         </div>
@@ -706,23 +741,60 @@ export default function App(): JSX.Element {
       <div className="app-gradient" />
       <div className="app-container">
         <header className="app-header">
-          <button type="button" className="burger-button" onClick={handleToggleMenu} aria-label="Открыть меню">
-            <span />
-            <span />
-            <span />
-          </button>
-          <div className="app-header__titles">
-            <h1 className="app-title">Метрика атмосферы</h1>
-            <p className="app-subtitle">
-              Следите за настроением команды, отвечайте честно и помогайте проектному офису принимать решения.
-            </p>
-          </div>
-          {user && (
-            <div className="user-card">
-              <span className="user-card__hello">Привет, {user.first_name}!</span>
-              <span className="user-card__hint">Ваши ответы видны только вам и проектному офису.</span>
+          <div className="app-header__top">
+            <div className="app-header__toolbar">
+              <button
+                type="button"
+                className={`icon-button${view === 'history' ? ' icon-button--active' : ''}`}
+                onClick={toggleHistoryView}
+                aria-label={
+                  view === 'history'
+                    ? 'Закрыть личный кабинет и перейти к проектам'
+                    : 'Открыть личный кабинет с вашими ответами'
+                }
+                aria-pressed={view === 'history'}
+                title={
+                  view === 'history'
+                    ? 'Закрыть личный кабинет и перейти к проектам'
+                    : 'Открыть личный кабинет с вашими ответами'
+                }
+              >
+                <span className="icon-button__glyph" aria-hidden="true">
+                  <ProfileIcon />
+                </span>
+              </button>
+              <ThemeToggle
+                theme={theme}
+                preference={preference}
+                onPreferenceChange={selectThemePreference}
+              />
+              <button
+                type="button"
+                className="icon-button burger-button"
+                onClick={handleToggleMenu}
+                aria-label="Открыть меню"
+                title="Открыть меню"
+              >
+                <span />
+                <span />
+                <span />
+              </button>
             </div>
-          )}
+          </div>
+          <div className="app-header__content">
+            <div className="app-header__titles">
+              <h1 className="app-title">Метрика атмосферы</h1>
+              <p className="app-subtitle">
+                Следите за настроением команды, отвечайте честно и помогайте проектному офису принимать решения.
+              </p>
+            </div>
+            {user && (
+              <div className="user-card">
+                <span className="user-card__hello">Привет, {user.first_name}!</span>
+                <span className="user-card__hint">Ваши ответы видны только вам и проектному офису.</span>
+              </div>
+            )}
+          </div>
         </header>
 
         {banner && (

@@ -30,22 +30,17 @@ router.get('/debug-token', (_req, res) => {
 
 router.use(adminAuth);
 
-router.get('/projects', async (_req, res) => {
-  try {
-    const projects = await listAdminProjects();
-    res.json({ projects });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
-
 const createProjectSchema = z.object({
   name: z.string().min(2).max(120),
 });
 
-const idSchema = z.number().int().positive();
 const projectNameSchema = z.object({
   name: z.string().min(2).max(120),
+});
+
+router.get('/projects', async (_req, res) => {
+  const projects = await listAdminProjects();
+  res.json({ projects });
 });
 
 router.post('/projects', async (req, res) => {
@@ -55,12 +50,23 @@ router.post('/projects', async (req, res) => {
     return;
   }
 
-  try {
-    const project = await createProject(parseResult.data.name, null);
-    res.status(201).json({ project });
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
-  }
+  const created = await createProject(parseResult.data.name);
+  const stats = (await listAdminProjects()).find((project) => project.id === created.id);
+
+  res.status(201).json({
+    project:
+      stats ?? {
+        ...created,
+        uniqueRespondents: 0,
+        averages: {
+          projectRecommendation: null,
+          managerEffectiveness: null,
+          teamComfort: null,
+          processOrganization: null,
+        },
+        contributionBreakdown: { yes: 0, partial: 0, no: 0 },
+      },
+  });
 });
 
 router.patch('/projects/:id', async (req, res) => {
@@ -70,23 +76,34 @@ router.patch('/projects/:id', async (req, res) => {
     return;
   }
 
-  const payloadResult = projectNameSchema.safeParse(req.body);
-  if (!payloadResult.success) {
-    res.status(400).json({ error: 'Invalid project payload', details: payloadResult.error.flatten() });
+  const parseResult = projectNameSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Invalid project payload', details: parseResult.error.flatten() });
     return;
   }
 
-  try {
-    const project = await updateProjectName(idResult.data, payloadResult.data.name);
-    if (!project) {
-      res.status(404).json({ error: 'Project not found' });
-      return;
-    }
-
-    res.json({ project });
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+  const updatedSummary = await updateProjectName(idResult.data, parseResult.data.name);
+  if (!updatedSummary) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
   }
+
+  const stats = (await listAdminProjects()).find((project) => project.id === updatedSummary.id);
+
+  res.json({
+    project:
+      stats ?? {
+        ...updatedSummary,
+        uniqueRespondents: 0,
+        averages: {
+          projectRecommendation: null,
+          managerEffectiveness: null,
+          teamComfort: null,
+          processOrganization: null,
+        },
+        contributionBreakdown: { yes: 0, partial: 0, no: 0 },
+      },
+  });
 });
 
 router.delete('/projects/:id', async (req, res) => {
@@ -100,35 +117,17 @@ router.delete('/projects/:id', async (req, res) => {
   res.status(204).end();
 });
 
-router.get('/projects/:id/responses', async (req, res) => {
-  const parseResult = idSchema.safeParse(Number(req.params.id));
-  if (!parseResult.success) {
-    res.status(400).json({ error: 'Invalid project id' });
-    return;
-  }
-
-  try {
-    const surveys = await listAdminProjectResponses(parseResult.data);
-    res.json({ surveys });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
-
-const ratingField = z.number().int().min(0).max(10);
-const textField = z.string().max(4000).optional();
-
 const surveyUpdateSchema = z.object({
-  projectRecommendation: ratingField.optional(),
-  projectImprovement: textField,
-  managerEffectiveness: ratingField.optional(),
-  managerImprovement: textField,
-  teamComfort: ratingField.optional(),
-  teamImprovement: textField,
-  processOrganization: ratingField.optional(),
-  processObstacles: textField,
+  projectRecommendation: z.number().int().min(0).max(10).optional(),
+  managerEffectiveness: z.number().int().min(0).max(10).optional(),
+  teamComfort: z.number().int().min(0).max(10).optional(),
+  processOrganization: z.number().int().min(0).max(10).optional(),
+  projectImprovement: z.string().max(4000).optional(),
+  managerImprovement: z.string().max(4000).optional(),
+  teamImprovement: z.string().max(4000).optional(),
+  processObstacles: z.string().max(4000).optional(),
   contributionValued: z.enum(['yes', 'no', 'partial']).optional(),
-  improvementIdeas: textField,
+  improvementIdeas: z.string().max(4000).optional(),
 });
 
 router.patch('/surveys/:id', async (req, res) => {
@@ -144,17 +143,13 @@ router.patch('/surveys/:id', async (req, res) => {
     return;
   }
 
-  try {
-    const survey = await updateSurveyAnswers(idResult.data, parseResult.data);
-    if (!survey) {
-      res.status(404).json({ error: 'Survey not found' });
-      return;
-    }
-
-    res.json({ survey });
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+  const updated = await updateSurveyAnswers(idResult.data, parseResult.data);
+  if (!updated) {
+    res.status(404).json({ error: 'Survey not found' });
+    return;
   }
+
+  res.json({ survey: updated });
 });
 
 router.delete('/surveys/:id', async (req, res) => {
@@ -166,6 +161,19 @@ router.delete('/surveys/:id', async (req, res) => {
 
   await deleteSurvey(idResult.data);
   res.status(204).end();
+});
+
+const idSchema = z.number().int().positive();
+
+router.get('/projects/:id/responses', async (req, res) => {
+  const parseResult = idSchema.safeParse(Number(req.params.id));
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Invalid project id' });
+    return;
+  }
+
+  const surveys = await listAdminProjectResponses(parseResult.data);
+  res.json({ surveys });
 });
 
 export default router;

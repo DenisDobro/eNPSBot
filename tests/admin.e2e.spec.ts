@@ -1,10 +1,10 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import request from 'supertest';
 import type { Express } from 'express';
-import { newDb } from 'pg-mem';
-import type { Pool } from 'pg';
 
 import type { SurveyAnswers } from '../src/types';
-import { setDbPool, initDB, closeDbPool } from '../src/db';
 
 const adminToken = 'test-admin-token';
 const debugUser = {
@@ -19,31 +19,31 @@ const debugHeaders = {
 
 describe('Admin project and survey management', () => {
   let app: Express;
+  let tempDbPath: string;
   let projectId: number;
   let surveyId: number;
-  let testPool: Pool;
 
   beforeAll(async () => {
+    tempDbPath = path.join(os.tmpdir(), `enps-admin-tests-${Date.now()}.sqlite`);
+
     process.env.ALLOW_INSECURE_INIT_DATA = 'true';
     process.env.ADMIN_TOKEN = adminToken;
     process.env.SERVE_FRONTEND = 'false';
+    process.env.DATABASE_FILE = tempDbPath;
+    process.env.DATABASE_URL = '';
+    process.env.USE_SUPABASE_DEFAULT = 'false';
 
     jest.resetModules();
-
-    const db = newDb({ autoCreateForeignKeyIndices: true });
-    const adapter = db.adapters.createPg();
-    testPool = new adapter.Pool();
-    setDbPool(testPool);
-
+    const { initDB } = await import('../src/db');
     await initDB();
-
     const { createApp } = await import('../src/app');
     app = createApp();
   });
 
-  afterAll(async () => {
-    await closeDbPool();
-    await testPool.end();
+  afterAll(() => {
+    if (fs.existsSync(tempDbPath)) {
+      fs.unlinkSync(tempDbPath);
+    }
   });
 
   it('creates a project as user and lists it', async () => {
@@ -79,10 +79,23 @@ describe('Admin project and survey management', () => {
     surveyId = createSurveyResponse.body.record.id;
     expect(createSurveyResponse.body.wasCreated).toBe(true);
 
+    const completeAnswers: SurveyAnswers = {
+      projectRecommendation: 8,
+      projectImprovement: 'Ship faster',
+      managerEffectiveness: 7,
+      managerImprovement: 'Improve planning',
+      teamComfort: 9,
+      teamImprovement: 'More team events',
+      processOrganization: 6,
+      processObstacles: 'Legacy tools',
+      contributionValued: 'partial',
+      improvementIdeas: 'Invest in automation',
+    };
+
     await request(app)
       .patch(`/api/surveys/${surveyId}`)
       .set(debugHeaders)
-      .send({ projectRecommendation: 8, managerEffectiveness: 7 })
+      .send(completeAnswers)
       .expect(200);
   });
 

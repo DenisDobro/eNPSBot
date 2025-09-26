@@ -36,6 +36,7 @@ export interface SurveyRecord {
   createdAt: string;
   updatedAt: string;
   canEdit: boolean;
+  isComplete: boolean;
 }
 
 export type SurveyAnswers = Partial<

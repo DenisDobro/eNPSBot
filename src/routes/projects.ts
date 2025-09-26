@@ -12,12 +12,9 @@ router.get('/', async (req, res) => {
   const search = typeof req.query.search === 'string' ? req.query.search : undefined;
   const limitParam = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
   const limit = Number.isFinite(limitParam) && limitParam ? Math.min(Math.max(limitParam, 1), 100) : 50;
-  try {
-    const projects = await listProjects(search, limit);
-    res.json({ projects });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
+  const projects = await listProjects(search, limit);
+
+  res.json({ projects });
 });
 
 router.post('/', async (req, res) => {
@@ -33,12 +30,8 @@ router.post('/', async (req, res) => {
     return;
   }
 
-  try {
-    const project = await createProject(parseResult.data.name, user.id);
-    res.status(201).json({ project });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
+  const project = await createProject(parseResult.data.name, user.id);
+  res.status(201).json({ project });
 });
 
 export default router;
