@@ -27,9 +27,18 @@ async function createAdapter(): Promise<void> {
 
   if (config.databaseUrl) {
     const postgres = createPostgresAdapter(config.databaseUrl);
-    await postgres.init();
-    adapter = postgres;
-    return;
+    try {
+      await postgres.init();
+      adapter = postgres;
+      return;
+    } catch (error) {
+      await postgres.close().catch(() => undefined);
+      // eslint-disable-next-line no-console
+      console.warn(
+        'Failed to connect using DATABASE_URL. Falling back to alternative database adapters.',
+        error,
+      );
+    }
   }
 
   if (config.useSupabaseDefault) {
