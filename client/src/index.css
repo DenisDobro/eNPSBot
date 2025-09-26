@@ -79,6 +79,8 @@
     var(--telegram-safe-area-bottom),
     var(--runtime-safe-area-bottom)
   );
+  --app-safe-area-top: var(--safe-area-top);
+  --app-safe-area-bottom: var(--safe-area-bottom);
 }
 
 @supports (padding-top: constant(safe-area-inset-top)) {

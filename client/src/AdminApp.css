@@ -1,8 +1,8 @@
 .admin-app {
   min-height: 100vh;
   padding-inline: 0;
-  padding-top: calc(40px + var(--safe-area-top));
-  padding-bottom: calc(72px + var(--safe-area-bottom));
+  padding-top: calc(40px + var(--app-safe-area-top));
+  padding-bottom: calc(72px + var(--app-safe-area-bottom));
 }
 
 .admin-container {

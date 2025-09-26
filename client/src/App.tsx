@@ -271,11 +271,21 @@ function useTelegramSafeArea(): void {
     }
 
     const root = document.documentElement;
+
+    const parsePxValue = (value: string | null | undefined): number => {
+      if (!value) {
+        return 0;
+      }
+
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
     const applySafeArea = () => {
       const insets = webApp.contentSafeAreaInset ?? webApp.safeAreaInset;
       const platform = webApp.platform;
       const requireMobileInset = platform === 'ios' || platform === 'android' || platform === 'android_x';
-      const MIN_TOP_INSET = requireMobileInset ? 120 : 0;
+      const MIN_TOP_INSET = requireMobileInset ? 160 : 0;
 
       const rawTop = typeof insets?.top === 'number' ? Math.max(0, insets.top) : null;
       const rawBottom = typeof insets?.bottom === 'number' ? Math.max(0, insets.bottom) : null;
@@ -289,13 +299,20 @@ function useTelegramSafeArea(): void {
       }
 
       const resolvedTop = Math.max(rawTop ?? 0, inferredTop, MIN_TOP_INSET);
-      const resolvedBottom = rawBottom ?? null;
+      const styles = window.getComputedStyle(root);
+      const cssSystemTop = parsePxValue(styles.getPropertyValue('--system-safe-area-top'));
+      const cssTelegramTop = parsePxValue(styles.getPropertyValue('--telegram-safe-area-top'));
+      const cssSystemBottom = parsePxValue(styles.getPropertyValue('--system-safe-area-bottom'));
+      const cssTelegramBottom = parsePxValue(styles.getPropertyValue('--telegram-safe-area-bottom'));
+
+      const runtimeTop = Math.max(resolvedTop, cssSystemTop, cssTelegramTop);
+      const resolvedBottom = rawBottom ?? Math.max(cssSystemBottom, cssTelegramBottom);
+      const runtimeBottom = Math.max(resolvedBottom, cssSystemBottom, cssTelegramBottom);
 
       root.style.setProperty('--runtime-safe-area-top', `${resolvedTop}px`);
-
-      if (resolvedBottom !== null) {
-        root.style.setProperty('--runtime-safe-area-bottom', `${resolvedBottom}px`);
-      }
+      root.style.setProperty('--app-safe-area-top', `${runtimeTop}px`);
+      root.style.setProperty('--runtime-safe-area-bottom', `${resolvedBottom}px`);
+      root.style.setProperty('--app-safe-area-bottom', `${runtimeBottom}px`);
     };
 
     applySafeArea();
